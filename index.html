@@ -135,7 +135,7 @@
     border-radius: 16px; padding: 20px; display: flex; align-items: center; justify-content: center;
     position: relative; min-height: 280px; min-width: 280px;
   }
-  .qr-frame canvas { display: block !important; border-radius: 4px; }
+  .qr-frame canvas { display: block !important; border-radius: 4px; max-width: 100%; height: auto; }
   .qr-placeholder {
     width: 200px; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 12px; text-align: center; gap: 10px;
@@ -166,6 +166,31 @@
     opacity: 0; pointer-events: none; z-index: 999;
   }
   .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  /* QR expand modal */
+  .qr-modal-overlay {
+    position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .qr-modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .qr-modal-body {
+    position: relative; padding: 24px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border);
+    max-width: 90vw; max-height: 90vh; overflow: auto;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .qr-modal-body canvas { display: block; max-width: 100%; height: auto; }
+  .qr-modal-hint {
+    color: var(--text-dim); font-size: 12px; letter-spacing: 0.03em;
+  }
+  .expand-btn {
+    position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.55);
+    border: 1px solid var(--border); color: var(--text); width: 28px; height: 28px;
+    border-radius: 6px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s; z-index: 2;
+  }
+  .expand-btn:hover { color: var(--text); border-color: var(--border-hover); background: rgba(0,0,0,0.75); }
   .scan-tip {
     font-size: 11px; color: var(--text-dim); background: var(--surface2); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 10px 14px; line-height: 1.5;
@@ -426,6 +451,9 @@
       </div>
       <div class="qr-stage">
         <div class="qr-frame" id="qrFrame">
+          <button class="expand-btn" id="expandBtn" title="View full size" onclick="openQrModal()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
           <div class="qr-placeholder" id="placeholder">
             <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" style="opacity:0.3"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
             Fill in details &amp; generate
@@ -450,6 +478,11 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="qr-modal-overlay" id="qrModal" onclick="closeQrModal(event)">
+  <div class="qr-modal-body" id="qrModalBody">
+  </div>
+  <span class="qr-modal-hint">tap outside to dismiss</span>
+</div>
 
 <script>
 // ─── STATE ─────────────────────────
@@ -986,7 +1019,16 @@ function generateQR() {
   frame.style.background = transparentBg
     ? 'repeating-conic-gradient(#22252d 0% 25%, #1a1d23 0% 50%) 0 0 / 16px 16px'
     : bgColor;
+  // Re-add expand button (cleared by innerHTML='')
+  const expBtn = document.createElement('button');
+  expBtn.className = 'expand-btn';
+  expBtn.title = 'View full size';
+  expBtn.onclick = openQrModal;
+  expBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  frame.appendChild(expBtn);
   frame.appendChild(canvas);
+  frame.style.cursor = 'pointer';
+  frame.onclick = function(e) { if (e.target === canvas || e.target === frame) openQrModal(); };
   mainCanvas = canvas;
 
   // Meta
@@ -1048,6 +1090,30 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
 }
+
+// ─── QR MODAL ──────────────────────
+function openQrModal() {
+  if (!mainCanvas) return;
+  const overlay = document.getElementById('qrModal');
+  const body = document.getElementById('qrModalBody');
+  // Clone the canvas at full resolution
+  const clone = document.createElement('canvas');
+  clone.width = mainCanvas.width;
+  clone.height = mainCanvas.height;
+  clone.getContext('2d').drawImage(mainCanvas, 0, 0);
+  // Clear previous canvas if any
+  const prev = body.querySelector('canvas');
+  if (prev) prev.remove();
+  body.appendChild(clone);
+  overlay.classList.add('open');
+  document.addEventListener('keydown', modalEscHandler);
+}
+function closeQrModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('qrModal').classList.remove('open');
+  document.removeEventListener('keydown', modalEscHandler);
+}
+function modalEscHandler(e) { if (e.key === 'Escape') closeQrModal(); }
 
 // ─── VCF IMPORT ────────────────────
 function handleVCFUpload(e) {
