@@ -375,11 +375,15 @@
             <div class="divider"></div>
             <div class="row">
               <div class="field"><label>Logo Size (% of QR)</label>
-                <select id="logoSize"><option value="0.2">20% — Subtle</option><option value="0.25" selected>25% — Balanced</option><option value="0.3">30% — Prominent</option></select>
+                <select id="logoSize"><option value="0.15">15% — Tiny</option><option value="0.2">20% — Subtle</option><option value="0.25" selected>25% — Balanced</option><option value="0.3">30% — Prominent</option><option value="0.35">35% — Large</option><option value="0.4">40% — Extra Large</option><option value="0.5">50% — Half</option><option value="0.6">60% — Overlay</option><option value="0.75">75% — Dominant</option><option value="1.0">100% — Full</option></select>
               </div>
               <div class="field"><label>Logo Margin (px)</label>
-                <select id="logoMargin"><option value="4">4 — Tight</option><option value="8" selected>8 — Standard</option><option value="14">14 — Spacious</option></select>
+                <select id="logoMargin"><option value="0">0 — None</option><option value="4">4 — Tight</option><option value="8" selected>8 — Standard</option><option value="14">14 — Spacious</option></select>
               </div>
+            </div>
+            <div class="toggle-row">
+              <label>Logo Background</label>
+              <label class="switch"><input type="checkbox" id="logoBg" checked onchange="if(currentData)generateQR()"><span class="slider"></span></label>
             </div>
             <div class="scan-tip" style="margin-top:12px;"><strong>Tip:</strong> Logos exploit QR error correction — up to 30% of the code can be covered and still scan. Use a simple, high-contrast logo. Error correction is auto-set to <strong>H</strong> when a logo is uploaded.</div>
           </div>
@@ -478,7 +482,7 @@ const presets = [
   { fg:'#dc2626', bg:'#fef2f2', l:'Ruby' },
   { fg:'#c2410c', bg:'#fff7ed', l:'Ember' },
   { fg:'#0284c7', bg:'#f0f9ff', l:'Sky' },
-  { fg:'#e11d48', bg:'#0f172a', l:'Neon Rose' },
+  { fg:'#e10b1c', bg:'#000000', l:'Neon Rose' },
   { fg:'#5eead4', bg:'#0b0c0e', l:'Dark Teal' },
   { fg:'#facc15', bg:'#18181b', l:'Gold Dark' },
   { fg:'#ffffff', bg:'#000000', l:'Inverted' },
@@ -954,18 +958,21 @@ function generateQR() {
     const ly = (canvasSize - logoS) / 2;
 
     // Clear area behind logo
-    ctx.fillStyle = transparentBg ? 'rgba(255,255,255,0)' : bgColor;
-    if (!transparentBg) {
-      ctx.beginPath();
-      ctx.roundRect(lx - logoMarginPx, ly - logoMarginPx, logoS + logoMarginPx * 2, logoS + logoMarginPx * 2, 8);
-      ctx.fill();
-    } else {
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.roundRect(lx - logoMarginPx, ly - logoMarginPx, logoS + logoMarginPx * 2, logoS + logoMarginPx * 2, 8);
-      ctx.fill();
-      ctx.restore();
+    const logoBgEnabled = document.getElementById('logoBg').checked;
+    if (logoBgEnabled) {
+      ctx.fillStyle = transparentBg ? 'rgba(255,255,255,0)' : bgColor;
+      if (!transparentBg) {
+        ctx.beginPath();
+        ctx.roundRect(lx - logoMarginPx, ly - logoMarginPx, logoS + logoMarginPx * 2, logoS + logoMarginPx * 2, 8);
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.roundRect(lx - logoMarginPx, ly - logoMarginPx, logoS + logoMarginPx * 2, logoS + logoMarginPx * 2, 8);
+        ctx.fill();
+        ctx.restore();
+      }
     }
     ctx.drawImage(logoImg, lx, ly, logoS, logoS);
   }
