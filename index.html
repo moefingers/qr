@@ -402,6 +402,9 @@
             <div class="field"><label>Quiet Zone Margin (modules)</label>
               <select id="marginMod"><option value="0">0 — None</option><option value="1">1 — Minimal</option><option value="2" selected>2 — Standard</option><option value="4">4 — Large</option></select>
             </div>
+            <div class="field"><label>Dot Density <span id="densityVal" style="opacity:.6">92%</span></label>
+              <input type="range" id="dotDensity" min="50" max="100" step="1" value="92" style="width:100%" oninput="document.getElementById('densityVal').textContent=this.value+'%';if(currentData)generateQR()">
+            </div>
             <div class="divider"></div>
             <div class="scan-tip"><strong>Error Correction</strong> controls how much of the QR can be damaged while remaining scannable. Higher levels increase density. With a logo, use <strong>H (30%)</strong>.<br><br><strong>Quiet Zone</strong> is the blank margin around the QR code — scanners need it for reliable detection.</div>
           </div>
@@ -908,7 +911,7 @@ function generateQR() {
       if (isFinderPattern(r, c, modCount)) continue;
       const cx = (c + marginMod) * modSize + modSize / 2;
       const cy = (r + marginMod) * modSize + modSize / 2;
-      drawModule(ctx, cx, cy, modSize * 0.92, dotType);
+      drawModule(ctx, cx, cy, modSize * (+document.getElementById('dotDensity').value / 100), dotType);
     }
   }
 
