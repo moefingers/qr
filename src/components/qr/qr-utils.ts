@@ -5,7 +5,7 @@ export const QR_BYTE_WARN_THRESHOLD = 2500;
 export const MAX_LOGO_BYTES = 500_000;
 
 export function parseSvgAspect(markup: string): number {
-  const vbMatch = markup.match(/viewBox=["'][\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)["']/);
+  const vbMatch = markup.match(/viewBox=["'][\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)["']/);
   const wMatch = markup.match(/width=["']([\d.]+)/);
   const hMatch = markup.match(/height=["']([\d.]+)/);
   let svgW = 0,

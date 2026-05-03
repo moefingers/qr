@@ -836,15 +836,10 @@ function StyleSaves({
   customLogo: string | null;
   onLoad: (style: StyleData, logo?: string | null) => void;
 }) {
-  const [saves, setSaves] = useState<SaveEntry[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [saves, setSaves] = useState<SaveEntry[]>(() => loadSavesFromStorage());
+  const [loaded] = useState(true);
   const [saveName, setSaveName] = useState('');
   const [animatePreviews, setAnimatePreviews] = useState(false);
-
-  useEffect(() => {
-    setSaves(loadSavesFromStorage());
-    setLoaded(true);
-  }, []);
 
   function save() {
     if (!saveName.trim()) return;
