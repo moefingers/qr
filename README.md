@@ -1,21 +1,34 @@
-# qr
+# Styled QR Generator
 
-A single-file QR code generator with full styling controls. No server, no build step — just one HTML file.
+Styled QR code generator with full customization: six dot shapes, corner styles, color gradients, and logo embedding with intelligent alpha-sampled dot dodging. CSS animation system (breathe, radial loop) with high-fidelity export via WebCodecs to MP4, WebM, GIF (Floyd-Steinberg dithered), PNG, and WebP. Supports vCard contacts with .vcf import (UTF-8/Arabic), URLs, plain text, WiFi auto-connect, email, and SMS. Style saves, presets, and all data persisted to localStorage. Runs entirely offline - no server, no accounts.
 
 **Live:** https://moefingers.github.io/qr/
 
 ## Features
 
-**QR types** — URL, plain text, WiFi auto-connect, email, SMS, and vCard contacts (with .vcf import and Arabic/UTF-8 support)
+**QR types** - vCard contacts (with .vcf import, UTF-8/Arabic encoding detection), URL, plain text, WiFi auto-connect, email, and SMS
 
-**Styling** — dot shapes, foreground/background colors, linear & radial gradients, corner square and corner dot shapes, logo embedding with configurable padding
+**Styling** - six dot shapes (square, circle, rounded, diamond, star, heart), three corner styles, foreground/background colors, linear and radial gradients, transparent backgrounds, color presets, saveable style profiles
 
-**Export** — download as PNG, or grab the .vcf contact file directly
+**Logo** - upload any image or SVG with intelligent alpha-sampled dot dodging (distance-field dilation), configurable size/margin/aggressiveness, SVG color sync with QR gradient
 
-## Usage
+**Animation** - CSS-based breathe and radial loop effects via `@property` and `repeating-radial-gradient`, customizable stops with per-stop color animation, speed, and direction controls
 
-Open `index.html` in a browser. Everything runs client-side.
+**Export** - MP4 and WebM via WebCodecs VideoEncoder (H.264/VP9, 60fps, hardware-accelerated), GIF with Floyd-Steinberg dithering, PNG and WebP static frames from animated QRs, .vcf contact download, copy data to clipboard
+
+**Persistence** - all form data, style settings, and saved profiles stored in localStorage
+
+## Stack
+
+React 19, TypeScript 6, Vite 8, Tailwind CSS v4, qrcode-generator, gifenc, mp4-muxer, webm-muxer
+
+## Development
+
+```
+pnpm install
+pnpm dev
+```
 
 ## Deployment
 
-Deployed automatically to GitHub Pages via Actions on push to `shepherd`.
+Built and deployed automatically to GitHub Pages via Actions on push to `shepherd`. Pre-commit hook runs TypeScript and ESLint via husky.
