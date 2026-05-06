@@ -11,9 +11,15 @@ export async function exportVideo(
   style: StyleData,
   format: VideoFormat,
   onProgress?: (pct: number) => void,
-): Promise<Blob> {
+): Promise<{ blob: Blob; ext: string }> {
   if (!isWebCodecsSupported()) {
-    throw new Error('WebCodecs API not supported in this browser');
+    const { exportVideoFallback, isMediaRecorderFallbackSupported } = await import(
+      './qr-export-video-fallback'
+    );
+    if (!isMediaRecorderFallbackSupported()) {
+      throw new Error('Video export is not supported in this browser');
+    }
+    return exportVideoFallback(maskDataUrl, style, onProgress);
   }
 
   const size = style.qrSize;
@@ -44,7 +50,7 @@ export async function exportVideo(
       if (e.data.type === 'progress') {
         onProgress?.(e.data.pct!);
       } else if (e.data.type === 'done') {
-        resolve(new Blob([e.data.result!], { type: mimeType }));
+        resolve({ blob: new Blob([e.data.result!], { type: mimeType }), ext: format });
         worker.terminate();
       } else if (e.data.type === 'error') {
         reject(new Error(e.data.msg));

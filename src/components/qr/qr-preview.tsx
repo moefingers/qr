@@ -68,8 +68,8 @@ export function QrPreview({
     setExportLabel('MP4');
     try {
       const { exportVideo } = await import('./qr-export-video');
-      const blob = await exportVideo(maskDataUrl, style, 'mp4', setExportProgress);
-      triggerDownload(blob, `${name}_qr.mp4`);
+      const { blob, ext } = await exportVideo(maskDataUrl, style, 'mp4', setExportProgress);
+      triggerDownload(blob, `${name}_qr.${ext}`);
     } catch (err) {
       console.error('MP4 export failed:', err);
     } finally {
@@ -84,8 +84,8 @@ export function QrPreview({
     setExportLabel('WebM');
     try {
       const { exportVideo } = await import('./qr-export-video');
-      const blob = await exportVideo(maskDataUrl, style, 'webm', setExportProgress);
-      triggerDownload(blob, `${name}_qr.webm`);
+      const { blob, ext } = await exportVideo(maskDataUrl, style, 'webm', setExportProgress);
+      triggerDownload(blob, `${name}_qr.${ext}`);
     } catch (err) {
       console.error('WebM export failed:', err);
     } finally {
