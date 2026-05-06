@@ -116,8 +116,8 @@ export const QR_PRESETS: QrPreset[] = [
     },
   },
   {
-    id: 'brinks',
-    name: 'Brinks',
+    id: 'corporate',
+    name: 'Corporate',
     preview: { dot: '#1a1a2e', bg: '#ffffff' },
     overrides: {
       dotColor: '#1a1a2e',

@@ -271,39 +271,7 @@ export function QrStyleControls({
         <div className="space-y-4">
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Default Logos
-            </p>
-            <div className="flex gap-2">
-              <LogoPresetBtn
-                src="/assets/tools/brinkslogo.svg"
-                label="Brinks"
-                active={customLogo === '/assets/tools/brinkslogo.svg'}
-                onClick={() =>
-                  onLogoChange(
-                    customLogo === '/assets/tools/brinkslogo.svg'
-                      ? null
-                      : '/assets/tools/brinkslogo.svg',
-                  )
-                }
-              />
-              <LogoPresetBtn
-                src="/assets/tools/brinkshome2line.svg"
-                label="Brinks Home"
-                active={customLogo === '/assets/tools/brinkshome2line.svg'}
-                onClick={() =>
-                  onLogoChange(
-                    customLogo === '/assets/tools/brinkshome2line.svg'
-                      ? null
-                      : '/assets/tools/brinkshome2line.svg',
-                  )
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Upload Custom
+              Custom Logo
             </p>
             <label className="flex items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-accent/50 transition-colors">
               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -1015,24 +983,3 @@ function ToggleRow({
   );
 }
 
-function LogoPresetBtn({
-  src,
-  label,
-  active,
-  onClick,
-}: {
-  src: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${active ? 'border-accent bg-accent/5' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}
-      onClick={onClick}
-    >
-      <img src={src} alt={label} className="w-8 h-8 dark:invert" />
-      <span className="text-[10px] text-gray-500 dark:text-gray-400">{label}</span>
-    </button>
-  );
-}
