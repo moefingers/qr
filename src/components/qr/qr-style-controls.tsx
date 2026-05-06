@@ -775,7 +775,7 @@ function SaveTile({
           {save.name}
         </span>
       </div>
-      <div className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+      <div className="absolute top-0.5 right-0.5 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
         <button
           className="p-1 rounded bg-black/60 text-white text-[9px]"
           onClick={onOverwrite}

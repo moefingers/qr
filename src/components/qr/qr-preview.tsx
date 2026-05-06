@@ -192,7 +192,7 @@ export function QrPreview({
           className="max-w-full h-auto rounded-lg"
           style={{ imageRendering: 'pixelated', display: isAnimated ? 'none' : undefined }}
         />
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex gap-1 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             className="p-1.5 rounded-md bg-black/50 text-white"
             onClick={(e) => {
