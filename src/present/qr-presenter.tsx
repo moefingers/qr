@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Sun, Moon, ChevronDown, WifiOff, Star } from 'lucide-react';
+import { ArrowLeft, ChevronDown, WifiOff, Star } from 'lucide-react';
+import { useTheme } from '../hooks/use-theme';
 
 import type {
   StyleData,
@@ -165,7 +166,10 @@ export function QrPresenter() {
   const [online, setOnline] = useState(
     () => (typeof navigator === 'undefined' ? true : navigator.onLine),
   );
-  const [lightBg, setLightBg] = useState(true);
+  // The presenter's light/dark surface follows the canonical theme mode.
+  // No local toggle — one source of truth, one control, one mental model.
+  const { resolvedMode } = useTheme();
+  const lightBg = resolvedMode === 'light';
   const [pickerOpen, setPickerOpen] = useState(false);
   const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
   const [overlayVisible, setOverlayVisible] = useState(true);
@@ -259,18 +263,8 @@ export function QrPresenter() {
           .join(' ')
       : '';
 
-  // Sync the lightswitch to the active preset's saved `previewBg` whenever
-  // the selection changes, but don't clobber the user's manual toggle on
-  // subsequent re-renders of the same selection. Pattern lifted from
-  // unbrinks's presenter.
-  const lastSyncedSelectionRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!activeStyle) return;
-    const selectionKey = activeId ?? '__live_draft__';
-    if (lastSyncedSelectionRef.current === selectionKey) return;
-    lastSyncedSelectionRef.current = selectionKey;
-    setLightBg(activeStyle.previewBg === 'light');
-  }, [activeStyle, activeId]);
+  // (Removed: per-preset previewBg sync. Background follows the canonical
+  // theme mode now — see lightBg derivation above.)
 
   // Load logo into refs the renderer expects. The effect kicks off the
   // async load and bumps `logoLoadKey` when done so the render effect
@@ -502,14 +496,6 @@ export function QrPresenter() {
               Offline
             </span>
           )}
-          <button
-            type="button"
-            className={`${styles.chromeBtn} ${chromeLightCls}`}
-            onClick={() => setLightBg((v) => !v)}
-            aria-label={lightBg ? 'Use dark background' : 'Use light background'}
-          >
-            {lightBg ? <Moon size={16} /> : <Sun size={16} />}
-          </button>
           <ThemeToggle />
         </div>
       </header>
