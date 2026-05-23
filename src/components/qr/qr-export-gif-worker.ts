@@ -6,6 +6,7 @@ import {
   renderGradientFrame,
   compositeFrame,
   floydSteinbergDither,
+  getEffectiveLoopKind,
 } from './qr-export-render';
 
 type Msg = {
@@ -19,8 +20,10 @@ const ctx: Worker = self as unknown as Worker;
 ctx.onmessage = (e: MessageEvent<Msg>) => {
   const { maskBitmap, style, frameCount } = e.data;
   const size = maskBitmap.width;
-  const isBreathe = style.animationType === 'breathe';
-  const totalFrames = isBreathe ? frameCount * 2 : frameCount;
+  // Alternate-loop types (and any forward type with `alt` direction)
+  // need 2× frames to keep the wall-clock pace matched to forward types.
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
+  const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const speed = Math.max(style.animationSpeed, 1);
   const msPerFrame = Math.round(((100 / speed) * 4 * 1000) / totalFrames);
 
@@ -34,8 +37,14 @@ ctx.onmessage = (e: MessageEvent<Msg>) => {
   const gif = GIFEncoder();
 
   for (let f = 0; f < totalFrames; f++) {
-    const phase = computePhase(f, totalFrames, isBreathe);
-    const gradData = renderGradientFrame(size, style.animationStops, phase);
+    const phase = computePhase(
+      f,
+      totalFrames,
+      style.animationType,
+      style.animationDirection,
+      style.animationTimingFunction,
+    );
+    const gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
     const frame = compositeFrame(gradData, maskData, bgColor, size);
 
     const palette = quantize(frame, 256);

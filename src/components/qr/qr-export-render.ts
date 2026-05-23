@@ -1,4 +1,27 @@
-import type { AnimationStop } from './qr-types';
+import type {
+  AnimationStop,
+  AnimationType,
+  AnimationDirection,
+  AnimationTimingFunction,
+} from './qr-types';
+
+export type AnimationLoopKind = 'forward' | 'alternate';
+
+// Types that travel back-and-forth want their cycle stretched across 2×
+// the frame count so the wall-clock pace matches forward types.
+export function getAnimationLoopKind(type: AnimationType): AnimationLoopKind {
+  return type === 'breathe' || type === 'pulse' || type === 'wave' ? 'alternate' : 'forward';
+}
+
+// Effective loop kind incl. user-controlled direction. A forward-loop
+// type with direction `alt` (bounce) needs the cycle doubled too.
+export function getEffectiveLoopKind(
+  type: AnimationType,
+  direction: AnimationDirection,
+): AnimationLoopKind {
+  if (getAnimationLoopKind(type) === 'alternate') return 'alternate';
+  return direction === 'alt' ? 'alternate' : 'forward';
+}
 
 export function parseHex(hex: string): [number, number, number] {
   return [
@@ -25,21 +48,97 @@ export function lerpHex(a: string, b: string, t: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bv.toString(16).padStart(2, '0')}`;
 }
 
-export function computePhase(f: number, total: number, isBreathe: boolean): number {
-  const t = f / total;
-  if (isBreathe) {
-    const pp = t < 0.5 ? t * 2 : 2 - t * 2;
-    return 1 - (1 - pp) * (1 - pp);
+// JS counterparts of CSS animation-timing-function keywords. Polynomial
+// approximations are visually close enough to the spec cubic-beziers for
+// preview/export use.
+function applyEasing(t: number, fn: AnimationTimingFunction): number {
+  switch (fn) {
+    case 'ease':
+      return t * t * (3 - 2 * t);
+    case 'ease-in':
+      return t * t;
+    case 'ease-out':
+      return 1 - (1 - t) * (1 - t);
+    case 'ease-in-out':
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    case 'linear':
+    default:
+      return t;
   }
-  return t;
+}
+
+export function computePhase(
+  f: number,
+  total: number,
+  type: AnimationType,
+  direction: AnimationDirection = 'cw',
+  timing: AnimationTimingFunction = 'linear',
+): number {
+  let t = total > 0 ? f / total : 0;
+
+  // `alt` on a forward-loop type runs forward then reverses; the caller
+  // achieves this by doubling totalFrames, and we map t to a triangle
+  // wave so the doubled cycle bounces. Intrinsic-alternate types
+  // already bounce via their type shape (below) and skip this.
+  const intrinsicAlt = getAnimationLoopKind(type) === 'alternate';
+  if (direction === 'alt' && !intrinsicAlt) {
+    t = t < 0.5 ? t * 2 : 2 - t * 2;
+  }
+
+  // `ccw` reverses time. After the alt-bounce so an alt+ccw combo still
+  // bounces; it just starts from the other end of the cycle.
+  if (direction === 'ccw') t = 1 - t;
+
+  t = applyEasing(t, timing);
+
+  switch (type) {
+    case 'breathe': {
+      // Triangle wave with ease-out: gentle inhale/exhale.
+      const pp = t < 0.5 ? t * 2 : 2 - t * 2;
+      return 1 - (1 - pp) * (1 - pp);
+    }
+    case 'pulse':
+      return Math.pow(Math.sin(t * Math.PI), 2);
+    case 'wave':
+      return Math.sin(t * Math.PI);
+    default:
+      // Linear forward sweep used by sweep / radialLoop / spiral / colorCycle.
+      return t;
+  }
+}
+
+export function colorAtPhase(stops: AnimationStop[], phase: number): [number, number, number] {
+  if (stops.length === 0) return [0, 0, 0];
+  if (stops.length === 1) return parseHex(stops[0]!.color);
+  const segs = stops.length - 1;
+  const sp = phase * segs;
+  const i = Math.max(0, Math.min(segs - 1, Math.floor(sp)));
+  const t = sp - i;
+  return lerpRgb(parseHex(stops[i]!.color), parseHex(stops[i + 1]!.color), t);
 }
 
 export function renderGradientFrame(
   size: number,
   stops: AnimationStop[],
   phase: number,
+  type: AnimationType,
 ): Uint8ClampedArray {
   const data = new Uint8ClampedArray(size * size * 4);
+
+  // Uniform-color types: every pixel renders the same color sampled from
+  // the stop sequence at the current phase.
+  if (type === 'pulse' || type === 'colorCycle') {
+    const [r, g, b] = colorAtPhase(stops, phase);
+    for (let i = 0; i < size * size; i++) {
+      const pi = i * 4;
+      data[pi] = r;
+      data[pi + 1] = g;
+      data[pi + 2] = b;
+      data[pi + 3] = 255;
+    }
+    return data;
+  }
+
   const cx = size / 2,
     cy = size / 2;
   const maxR = size * 0.7;
@@ -59,8 +158,30 @@ export function renderGradientFrame(
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      const dist = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
-      const frac = dist / maxR;
+      // Per-type "flow axis" mapping to a raw 0..1 position before the
+      // band-wrap modulo.
+      let frac: number;
+      switch (type) {
+        case 'sweep':
+          frac = x / size;
+          break;
+        case 'wave':
+          frac = (x + y) / (size * 1.5);
+          break;
+        case 'spiral': {
+          // Angular sweep around center, with `phase` added so the conic
+          // gradient spins. Stop positions stay fixed for spiral; the
+          // rotation comes from this term.
+          const ang = Math.atan2(y - cy, x - cx) / (2 * Math.PI) + 0.5;
+          frac = ang + phase;
+          break;
+        }
+        case 'radialLoop':
+        case 'breathe':
+        default:
+          frac = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxR;
+          break;
+      }
 
       const withinBand = (((frac - firstPos) % interval) + interval) % interval;
       const bandPos = withinBand + firstPos;

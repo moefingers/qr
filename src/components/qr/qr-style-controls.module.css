@@ -1,0 +1,662 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) * var(--app-margin));
+}
+
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  margin-bottom: calc(var(--space-3) * var(--app-margin));
+}
+
+.tab {
+  position: relative;
+  padding: calc(var(--space-2) * var(--app-pad)) calc(var(--space-3) * var(--app-pad));
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-medium);
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-normal) var(--ease-default);
+
+  &:hover {
+    color: var(--foreground);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+
+.tabActive {
+  color: var(--primary);
+}
+
+.tabActive::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-2) * var(--app-pad));
+  right: calc(var(--space-2) * var(--app-pad));
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) * var(--app-margin));
+}
+
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.optionTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: calc(var(--space-2) * var(--app-pad));
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    border-color: oklch(from var(--foreground) l c h / 0.4);
+  }
+}
+
+.optionTileActive {
+  border-color: var(--primary);
+  background: oklch(from var(--primary) l c h / 0.08);
+  color: var(--primary);
+}
+
+.optionIcon {
+  font-size: calc(var(--font-size-lg) * var(--app-size));
+  line-height: 1;
+}
+
+.optionLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  line-height: 1.2;
+}
+
+.swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.subHeading {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-semibold);
+  color: var(--muted-foreground);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  margin-bottom: calc(var(--space-2) * var(--app-margin));
+}
+
+.colorField {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) * var(--app-margin));
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.colorSwatch {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  background: transparent;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.colorSwatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.colorSwatch::-webkit-color-swatch {
+  border-radius: calc(var(--radius-md) - 1px);
+  border: none;
+}
+.colorSwatch::-moz-color-swatch {
+  border-radius: calc(var(--radius-md) - 1px);
+  border: none;
+}
+
+.colorText {
+  flex: 1;
+  font-family: var(--font-mono);
+}
+
+.fieldHint {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+  margin-top: calc(var(--space-1) * var(--app-margin));
+  line-height: 1.4;
+}
+
+.indented {
+  padding-inline-start: calc(var(--space-3) * var(--app-pad));
+  border-inline-start: 2px solid oklch(from var(--primary) l c h / 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+.toggleLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.toggle {
+  position: relative;
+  width: calc(2.5rem * var(--app-pad));
+  height: calc(1.375rem * var(--app-pad));
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: calc(1rem * var(--app-pad));
+  height: calc(1rem * var(--app-pad));
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-50%);
+  transition: left var(--duration-fast) var(--ease-default);
+}
+
+.toggleOn {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.toggleOn .toggleKnob {
+  left: calc(100% - 2px - 1rem * var(--app-pad));
+  background: var(--primary-foreground);
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sliderHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sliderLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.sliderValue {
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--foreground);
+}
+
+.sliderValueBox {
+  width: 4.5rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--input);
+  color: var(--foreground);
+  padding: 0 2px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--ring);
+  }
+}
+
+.sliderValueGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.range {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--muted);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: none;
+  cursor: pointer;
+}
+
+.range:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+
+.uploadDrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 5rem;
+  border: 2px dashed var(--input);
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  cursor: pointer;
+  background: transparent;
+  transition: border-color var(--duration-normal) var(--ease-default);
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  & input {
+    display: none;
+  }
+}
+
+.uploadActions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: var(--destructive);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: oklch(from var(--destructive) calc(l * 1.1) c h);
+  }
+}
+
+.savesHeader {
+  display: flex;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.savesHeader input {
+  flex: 1;
+}
+
+.emptyState {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+  text-align: center;
+  padding: calc(var(--space-4) * var(--app-pad)) 0;
+}
+
+.savesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.saveTile {
+  position: relative;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  background: var(--card);
+  transition: opacity var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default);
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+.saveTilePrimary {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 1px oklch(from var(--warning) l c h / 0.4);
+}
+
+.saveTileDragging {
+  cursor: grabbing;
+  opacity: 0.3;
+}
+
+.saveTileCanvasWrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.saveTileCanvasWrapLight {
+  background: oklch(0.95 0.002 286);
+}
+
+.saveTileCanvasWrapDark {
+  background: oklch(0.18 0.005 286);
+}
+
+.saveTileCanvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.saveTileName {
+  padding: calc(var(--space-1) * var(--app-pad)) calc(var(--space-2) * var(--app-pad));
+  text-align: center;
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saveTileControls {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0.6;
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+
+.saveTileLeft {
+  left: 4px;
+}
+
+.saveTileRight {
+  right: 4px;
+}
+
+.saveTile:hover .saveTileControls,
+.saveTile:focus-within .saveTileControls {
+  opacity: 1;
+}
+
+.saveTileBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  background: oklch(0 0 0 / 0.6);
+  color: oklch(1 0 0);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: oklch(0 0 0 / 0.8);
+  }
+}
+
+.saveTileBtnDestructive:hover {
+  background: var(--destructive);
+}
+
+.saveTileBtnPrimary {
+  background: var(--warning);
+  color: oklch(0.21 0.006 286);
+}
+
+.saveTileBtnPrimary:hover {
+  background: oklch(from var(--warning) calc(l * 1.05) c h);
+}
+
+.directionRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+  flex-wrap: wrap;
+}
+
+.curveRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.curveRow select {
+  width: auto;
+}
+
+.pillRow {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pill {
+  padding: calc(var(--space-1) * var(--app-pad)) calc(var(--space-3) * var(--app-pad));
+  border-radius: var(--radius-md);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: oklch(from var(--muted) calc(l * 0.95) c h);
+  }
+}
+
+.pillActive {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.stopsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-3) * var(--app-margin));
+  padding-top: calc(var(--space-3) * var(--app-pad));
+  border-top: 1px solid var(--border);
+}
+
+.stopsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.addBtn {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  padding: 2px calc(var(--space-2) * var(--app-pad));
+  border-radius: var(--radius-md);
+  background: oklch(from var(--primary) l c h / 0.12);
+  color: var(--primary);
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    background: oklch(from var(--primary) l c h / 0.2);
+  }
+}
+
+.stop {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-2) * var(--app-margin));
+  padding: calc(var(--space-2) * var(--app-pad));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.stopHeadRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.stopIndex {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+  width: 1rem;
+}
+
+.stopColors {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.stopColorCell {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) * var(--app-margin));
+}
+
+.stopColorSwatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  background: transparent;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.stopColorSwatch::-webkit-color-swatch-wrapper { padding: 0; }
+.stopColorSwatch::-webkit-color-swatch { border-radius: calc(var(--radius-sm) - 1px); border: none; }
+.stopColorSwatch::-moz-color-swatch { border-radius: calc(var(--radius-sm) - 1px); border: none; }
+
+.stopColorLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.stopRemove {
+  background: none;
+  border: none;
+  color: var(--destructive);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  cursor: pointer;
+  padding: 2px 4px;
+
+  &:hover {
+    color: oklch(from var(--destructive) calc(l * 1.1) c h);
+  }
+}
+
+.stopPosGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.stopPosCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stopPosHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stopPosLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.stopPosInput {
+  width: 3rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--input);
+  color: var(--foreground);
+  outline: none;
+  padding: 0 2px;
+
+  &:focus {
+    border-color: var(--ring);
+  }
+}

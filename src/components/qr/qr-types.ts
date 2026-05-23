@@ -59,7 +59,20 @@ export interface StyleData {
   logoSize: number;
   logoMargin: number;
   logoBgEnabled: boolean;
+  // Distance (in modules, fractional) the dodge mask extends past the
+  // logo's alpha silhouette before the soft fade begins. 0 = mask flush
+  // to the silhouette; 1 = mask grows by one full module on every side.
   dodgeAggressiveness: number;
+  // Width of the linear fade beyond `dodgeAggressiveness`. Within
+  // `aggressiveness` strength is 1.0 (full erase); past
+  // `aggressiveness + softness` strength is 0 (untouched); in between
+  // the dodge ramps linearly.
+  dodgeSoftness: number;
+  // Fraction (0..1) of a module's area that the logo bitmap must cover
+  // for that module to be considered for the dodge mask. Filters out
+  // thin strokes that would otherwise drag huge clearance zones around
+  // them.
+  dodgeCoverageThreshold: number;
   logoIndependent: boolean;
   logoColor: string;
   logoUseGradient: boolean;
@@ -71,6 +84,7 @@ export interface StyleData {
   animationType: AnimationType;
   animationSpeed: number;
   animationDirection: AnimationDirection;
+  animationTimingFunction: AnimationTimingFunction;
   animationStops: AnimationStop[];
   activePreset: string | null;
 }
@@ -91,7 +105,16 @@ export type AnimationType =
   | 'breathe'
   | 'spiral'
   | 'colorCycle';
-export type AnimationDirection = 'cw' | 'ccw';
+// 'cw' = forward, 'ccw' = reverse, 'alt' = bounce (forward then reverse).
+// cw/ccw names retained so saved profiles continue to load without a
+// migration step.
+export type AnimationDirection = 'cw' | 'ccw' | 'alt';
+
+// CSS-compatible animation-timing-function keywords. Closed union so a
+// value can be injected straight into the animated preview's CSS without
+// further sanitization, and the export workers can apply a matching
+// easing curve when computing per-frame phase.
+export type AnimationTimingFunction = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
 
 export const DEFAULT_VCARD: VCardData = {
   firstName: '',
@@ -147,7 +170,9 @@ export const DEFAULT_STYLE: StyleData = {
   logoSize: 0.25,
   logoMargin: 8,
   logoBgEnabled: true,
-  dodgeAggressiveness: 30,
+  dodgeAggressiveness: 1,
+  dodgeSoftness: 0.5,
+  dodgeCoverageThreshold: 0,
   logoIndependent: false,
   logoColor: '#000000',
   logoUseGradient: false,
@@ -159,6 +184,7 @@ export const DEFAULT_STYLE: StyleData = {
   animationType: 'none',
   animationSpeed: 50,
   animationDirection: 'cw',
+  animationTimingFunction: 'linear',
   animationStops: [
     { color: '#000000', colorEnd: '#000000', position: 10, positionEnd: 20 },
     { color: '#5eead4', colorEnd: '#5eead4', position: 20, positionEnd: 15 },

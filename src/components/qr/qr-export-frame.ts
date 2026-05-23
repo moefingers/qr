@@ -24,7 +24,7 @@ export async function exportFrame(
   const maskData = maskCanvas.getContext('2d')!.getImageData(0, 0, size, size).data;
 
   const bgColor = style.transparentBg ? null : parseHex(style.bgColor);
-  const gradData = renderGradientFrame(size, style.animationStops, phase);
+  const gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
   const frameData = compositeFrame(gradData, maskData, bgColor, size);
 
   const outputCanvas = document.createElement('canvas');

@@ -1,5 +1,11 @@
 import type { StyleData } from './qr-types';
-import { parseHex, computePhase, renderGradientFrame, compositeFrame } from './qr-export-render';
+import {
+  parseHex,
+  computePhase,
+  renderGradientFrame,
+  compositeFrame,
+  getEffectiveLoopKind,
+} from './qr-export-render';
 
 function bestMime(): { mimeType: string; ext: string } | null {
   if (typeof MediaRecorder === 'undefined') return null;
@@ -32,8 +38,8 @@ export async function exportVideoFallback(
   const speed = Math.max(style.animationSpeed, 1);
   const cycleDuration = (100 / speed) * 4;
   const frameCount = Math.round(cycleDuration * fps);
-  const isBreathe = style.animationType === 'breathe';
-  const totalFrames = isBreathe ? frameCount * 2 : frameCount;
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
+  const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const frameDuration = 1000 / fps;
 
   const maskImg = new Image();
@@ -55,8 +61,14 @@ export async function exportVideoFallback(
   const ctx = canvas.getContext('2d')!;
 
   // Paint first frame before recording starts
-  const p0 = computePhase(0, totalFrames, isBreathe);
-  const g0 = renderGradientFrame(size, style.animationStops, p0);
+  const p0 = computePhase(
+    0,
+    totalFrames,
+    style.animationType,
+    style.animationDirection,
+    style.animationTimingFunction,
+  );
+  const g0 = renderGradientFrame(size, style.animationStops, p0, style.animationType);
   const f0 = compositeFrame(g0, maskData, bgColor, size);
   ctx.putImageData(new ImageData(f0 as Uint8ClampedArray<ArrayBuffer>, size, size), 0, 0);
 
@@ -74,8 +86,14 @@ export async function exportVideoFallback(
   onProgress?.(0);
 
   for (let f = 1; f < totalFrames; f++) {
-    const phase = computePhase(f, totalFrames, isBreathe);
-    const gradData = renderGradientFrame(size, style.animationStops, phase);
+    const phase = computePhase(
+      f,
+      totalFrames,
+      style.animationType,
+      style.animationDirection,
+      style.animationTimingFunction,
+    );
+    const gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
     const frameData = compositeFrame(gradData, maskData, bgColor, size);
     ctx.putImageData(
       new ImageData(frameData as Uint8ClampedArray<ArrayBuffer>, size, size),

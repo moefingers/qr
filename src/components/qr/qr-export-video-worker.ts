@@ -1,7 +1,13 @@
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from 'mp4-muxer';
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from 'webm-muxer';
 import type { StyleData } from './qr-types';
-import { parseHex, computePhase, renderGradientFrame, compositeFrame } from './qr-export-render';
+import {
+  parseHex,
+  computePhase,
+  renderGradientFrame,
+  compositeFrame,
+  getEffectiveLoopKind,
+} from './qr-export-render';
 
 type Msg = {
   maskBitmap: ImageBitmap;
@@ -16,8 +22,8 @@ const ctx: Worker = self as unknown as Worker;
 ctx.onmessage = async (e: MessageEvent<Msg>) => {
   const { maskBitmap, style, format, frameCount, fps } = e.data;
   const size = maskBitmap.width;
-  const isBreathe = style.animationType === 'breathe';
-  const totalFrames = isBreathe ? frameCount * 2 : frameCount;
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
+  const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const frameDurationUs = Math.round(1_000_000 / fps);
 
   const maskCanvas = new OffscreenCanvas(size, size);
@@ -80,8 +86,14 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
   });
 
   for (let f = 0; f < totalFrames; f++) {
-    const phase = computePhase(f, totalFrames, isBreathe);
-    const gradData = renderGradientFrame(size, style.animationStops, phase);
+    const phase = computePhase(
+      f,
+      totalFrames,
+      style.animationType,
+      style.animationDirection,
+      style.animationTimingFunction,
+    );
+    const gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
     const frameData = compositeFrame(gradData, maskData, bgColor, size);
 
     const imageData = new ImageData(frameData as Uint8ClampedArray<ArrayBuffer>, size, size);

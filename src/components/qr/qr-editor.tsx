@@ -141,21 +141,20 @@ export function QrEditor() {
       return;
     }
 
-    let dodgeMask: boolean[] | null = null;
+    let dodgeMask: Float32Array | null = null;
     if (customLogo) {
       const matrix = generateQrMatrix(qrData, styleData.ecLevel);
       if (matrix) {
         dodgeMask = await computeDodgeMask({
           logoImg: logoImgRef.current,
           logoSvgMarkup: svgMarkupRef.current,
-          logoColorSync: !styleData.logoIndependent,
-          dotColor: styleData.dotColor,
           modCount: matrix.modCount,
           canvasSize: styleData.qrSize,
           quietZone: styleData.quietZone,
           logoSize: styleData.logoSize,
-          logoMargin: styleData.logoMargin,
           aggressiveness: styleData.dodgeAggressiveness,
+          softness: styleData.dodgeSoftness,
+          coverageThreshold: styleData.dodgeCoverageThreshold,
         });
       }
     }
@@ -286,6 +285,7 @@ export function QrEditor() {
                 customLogo={customLogo}
                 onLogoChange={setCustomLogo}
                 isSvgLogo={isSvgLogo}
+                qrData={qrData ?? ''}
               />
             </section>
           </div>

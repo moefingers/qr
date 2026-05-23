@@ -8,7 +8,9 @@ export interface RenderOptions {
   style: StyleData;
   logoImg: HTMLImageElement | SVGElement | null;
   logoSvgMarkup: string | null;
-  dodgeMask: boolean[] | null;
+  // Per-module dodge strength in [0..1]. 1 = erase, 0 = draw, fractional
+  // = ramp via globalAlpha so the fade edge reads as soft.
+  dodgeMask: Float32Array | null;
   logoColorSync: boolean;
 }
 
@@ -316,10 +318,17 @@ export async function renderQrToCanvas(opts: RenderOptions): Promise<RenderResul
     for (let c = 0; c < modCount; c++) {
       if (!qr.isDark(r, c)) continue;
       if (isFinderPattern(r, c, modCount)) continue;
-      if (dodgeMask && dodgeMask[r * modCount + c]) continue;
+      const strength = dodgeMask ? dodgeMask[r * modCount + c]! : 0;
+      if (strength >= 1) continue;
       const cx = (c + style.quietZone) * modSize + modSize / 2;
       const cy = (r + style.quietZone) * modSize + modSize / 2;
-      drawModule(fgCtx, cx, cy, modSize * (style.shapeScale / 100), style.dotShape);
+      if (strength > 0) {
+        fgCtx.globalAlpha = 1 - strength;
+        drawModule(fgCtx, cx, cy, modSize * (style.shapeScale / 100), style.dotShape);
+        fgCtx.globalAlpha = 1;
+      } else {
+        drawModule(fgCtx, cx, cy, modSize * (style.shapeScale / 100), style.dotShape);
+      }
     }
   }
 
