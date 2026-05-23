@@ -220,11 +220,31 @@ function colorizeSvgMarkup(svgMarkup: string, style: StyleData): string {
     }
   }
 
+  // Preserve `fill="none"` (it's a meaningful "no fill" signal we never
+  // want to recolor) by parking it behind a placeholder before the
+  // global fill rewrite, then restoring it. Stroke="none" gets the same
+  // treatment to keep stroke-only logos rendering — though we don't
+  // rewrite strokes, leaving "none" intact is still required when the
+  // outer-SVG rewrite below would otherwise propagate a fill.
   let result = svgMarkup
     .replace(/fill="none"/g, NONE_PLACEHOLDER)
     .replace(/fill="[^"]*"/g, `fill="${fillRef}"`)
-    .replace(new RegExp(NONE_PLACEHOLDER, 'g'), 'fill="none"')
-    .replace(/<svg([^>]*)>/, `<svg$1 fill="${fillRef}">`);
+    .replace(new RegExp(NONE_PLACEHOLDER, 'g'), 'fill="none"');
+
+  // Inject a root-level `fill="..."` so SVGs that omit any fill (like
+  // most simple icon sets) inherit the chosen color. CRUCIAL: strip any
+  // existing root-level fill first — a duplicate XML attribute makes
+  // the Blob-loaded SVG fail to render (uploaded stroke-only icons
+  // like @infinite-syndicate/src/app/icon.svg ship with `fill="none"`
+  // on the <svg> root, and duplicating it breaks the whole image
+  // silently). The browser's `new Image().src = blobUrl` parser is
+  // stricter about duplicate attributes than the inline-HTML parser,
+  // which is why this bug shows up only for uploads, not for the
+  // preloaded SVGs whose roots happen not to set a fill.
+  result = result.replace(/<svg\b([^>]*)>/, (_match, attrs: string) => {
+    const cleaned = attrs.replace(/\s+fill="[^"]*"/g, '');
+    return `<svg${cleaned} fill="${fillRef}">`;
+  });
 
   if (gradientDef) {
     result = result.replace(/<svg([^>]*)>/, `<svg$1>${gradientDef}`);
