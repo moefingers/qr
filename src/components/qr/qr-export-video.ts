@@ -1,4 +1,6 @@
 import type { StyleData } from './qr-types';
+// See qr-export-gif.ts for why `?worker&inline` — same single-bundle rationale.
+import VideoWorker from './qr-export-video-worker.ts?worker&inline';
 
 export type VideoFormat = 'mp4' | 'webm';
 
@@ -42,7 +44,7 @@ export async function exportVideo(
   const mimeType = format === 'mp4' ? 'video/mp4' : 'video/webm';
 
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./qr-export-video-worker.ts', import.meta.url));
+    const worker = new VideoWorker();
 
     worker.onmessage = (
       e: MessageEvent<{ type: string; pct?: number; result?: ArrayBuffer; msg?: string }>,

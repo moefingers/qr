@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, WifiOff, Star } from 'lucide-react';
-import { useTheme } from '../hooks/use-theme';
+import { useTheme } from '../../hooks/use-theme';
 
 import type {
   StyleData,
@@ -9,14 +9,14 @@ import type {
   EmailData,
   SmsData,
   QrMode,
-} from '../components/qr/qr-types';
+} from './qr-types';
 import {
   DEFAULT_STYLE,
   DEFAULT_VCARD,
   DEFAULT_WIFI,
   DEFAULT_EMAIL,
   DEFAULT_SMS,
-} from '../components/qr/qr-types';
+} from './qr-types';
 import {
   buildVCard,
   buildUrl,
@@ -24,14 +24,11 @@ import {
   buildWifi,
   buildEmail,
   buildSms,
-} from '../components/qr/qr-data-builder';
-import {
-  renderQrToCanvas,
-  generateQrMatrix,
-} from '../components/qr/qr-canvas-renderer';
-import { computeDodgeMask } from '../components/qr/qr-dot-dodge';
-import { QrAnimatedPreview } from '../components/qr/qr-animated-preview';
-import { ThemeToggle } from '../components/ui/theme-toggle';
+} from './qr-data-builder';
+import { renderQrToCanvas, generateQrMatrix } from './qr-canvas-renderer';
+import { computeDodgeMask } from './qr-dot-dodge';
+import { QrAnimatedPreview } from './qr-animated-preview';
+import { ThemeToggle } from '../ui/theme-toggle';
 import styles from './qr-presenter.module.css';
 
 interface SaveEntry {
@@ -396,7 +393,7 @@ export function QrPresenter() {
             Open the editor and create or save a QR. Once anything is saved, this screen will
             display it.
           </p>
-          <a href="../" className={`btn btn-primary ${styles.homeLink}`}>
+          <a href="#" className={`btn btn-primary ${styles.homeLink}`}>
             Open QR editor
           </a>
         </div>
@@ -418,7 +415,7 @@ export function QrPresenter() {
         className={`${styles.header} ${headerLightCls} ${overlayCls}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <a href="../" className={`${styles.chromeBtn} ${chromeLightCls}`} aria-label="Back to editor">
+        <a href="#" className={`${styles.chromeBtn} ${chromeLightCls}`} aria-label="Back to editor">
           <ArrowLeft size={16} />
           Editor
         </a>

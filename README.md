@@ -1,13 +1,15 @@
 # Styled QR Generator
 
-Styled QR code generator with full customization: six dot shapes, corner styles, color gradients, and logo embedding with sub-module-accurate distance-field dot dodging. CSS animation system (sweep, pulse, wave, radial loop, breathe, spiral, color cycle) with high-fidelity export via WebCodecs to MP4, WebM, GIF (Floyd-Steinberg dithered), PNG, and WebP. Supports vCard contacts with .vcf import (UTF-8/Arabic), URLs, plain text, WiFi auto-connect, email, and SMS. Style saves with drag-to-reorder + star-pin a primary, presets, all persisted to localStorage. Runs entirely offline — no server, no accounts, no network.
+Single-file offline QR code generator. Everything — code, styles, fonts, favicon, workers — is inlined into one HTML file you can drop on any static host (or open via `file://`) and it runs end-to-end with no network. Six dot shapes, corner styles, color gradients, and logo embedding with sub-module-accurate distance-field dot dodging. CSS animation system (sweep, pulse, wave, radial loop, breathe, spiral, color cycle) with high-fidelity export via WebCodecs to MP4, WebM, GIF (Floyd-Steinberg dithered), PNG, and WebP. Supports vCard contacts with .vcf import (UTF-8/Arabic), URLs, plain text, WiFi auto-connect, email, and SMS. Style saves with drag-to-reorder + star-pin a primary, presets, all persisted to localStorage. No server, no accounts, no telemetry.
 
 **Live:** https://moefingers.github.io/qr/
 
-## Routes
+## Views
 
-- `/` — editor. Build a QR, style it, save presets, export.
-- `/present/` — fullscreen presenter. Reads saved presets and the live draft from localStorage and renders a single QR fullscreen for scanning. Selection precedence: `?id=<saveId>` URL param → primary-pinned save → first save → live draft. Tap anywhere to hide/show the chrome. Light/dark background toggle separate from the page theme mode.
+One HTML, two views, hash-routed from `src/main.tsx`:
+
+- **Editor** (default) — build a QR, style it, save presets, export.
+- **`#present`** — fullscreen presenter. Reads saved presets and the live draft from localStorage and renders a single QR fullscreen for scanning. Selection precedence: `?id=<saveId>` query → primary-pinned save → first save → live draft. Tap anywhere to hide/show the chrome. The "Present" button in the editor header opens `#present`; the "Editor" link in the presenter clears the hash.
 
 ## Features
 
@@ -38,6 +40,16 @@ pnpm install
 pnpm dev
 ```
 
+## Build
+
+`pnpm build` emits exactly one file: `dist/index.html`. Build-time helpers:
+
+- `vite-plugin-singlefile` inlines every JS chunk and CSS module
+- `?worker&inline` in `qr-export-gif.ts` and `qr-export-video.ts` packages the workers as base64-encoded Blob URLs
+- `build/inline-html-deps.ts` inlines `theme-init.js`, the favicon (as a data: URI), and the Google Fonts CSS + every woff2 file (fetched at build time)
+
+The resulting `index.html` makes zero network requests at runtime.
+
 ## Deployment
 
-Built and deployed automatically to GitHub Pages via Actions on push to `shepherd`. The build emits two HTML entries: `dist/index.html` (editor) and `dist/present/index.html` (presenter). Pre-commit hook runs TypeScript and ESLint via husky.
+Built and deployed automatically to GitHub Pages via Actions on push to `shepherd`. Pre-commit hook runs TypeScript and ESLint via husky.

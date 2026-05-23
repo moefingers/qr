@@ -1,4 +1,9 @@
 import type { StyleData } from './qr-types';
+// `?worker&inline` tells Vite to bundle the worker as a base64 string
+// and construct a Blob at runtime via URL.createObjectURL, so the
+// production HTML has no external worker file. Same Worker semantics,
+// just delivered inline.
+import GifWorker from './qr-export-gif-worker.ts?worker&inline';
 
 export async function exportGif(
   maskDataUrl: string,
@@ -20,7 +25,7 @@ export async function exportGif(
   const maskBitmap = await createImageBitmap(maskCanvas);
 
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./qr-export-gif-worker.ts', import.meta.url));
+    const worker = new GifWorker();
 
     worker.onmessage = (
       e: MessageEvent<{ type: string; pct?: number; result?: ArrayBuffer; msg?: string }>,

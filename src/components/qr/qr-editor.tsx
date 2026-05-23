@@ -252,7 +252,7 @@ export function QrEditor() {
           </div>
           <div className={styles.headerActions}>
             <a
-              href="./present/"
+              href="#present"
               className="btn btn-outline"
               title="Open the fullscreen presenter for scanning"
             >
