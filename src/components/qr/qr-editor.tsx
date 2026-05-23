@@ -23,7 +23,7 @@ import {
 import { renderQrToCanvas, generateQrMatrix } from './qr-canvas-renderer';
 import { computeDodgeMask } from './qr-dot-dodge';
 import { RENDER_DEBOUNCE_MS, SAVE_DEBOUNCE_MS } from './qr-utils';
-import { QrCode } from 'lucide-react';
+import { QrCode, Maximize2 } from 'lucide-react';
 import { ThemeToggle } from '../ui/theme-toggle';
 import styles from './qr-editor.module.css';
 
@@ -251,6 +251,14 @@ export function QrEditor() {
             </p>
           </div>
           <div className={styles.headerActions}>
+            <a
+              href="./present/"
+              className="btn btn-outline"
+              title="Open the fullscreen presenter for scanning"
+            >
+              <Maximize2 size={14} />
+              Present
+            </a>
             <ThemeToggle />
           </div>
         </header>
