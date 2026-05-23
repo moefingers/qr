@@ -14,6 +14,7 @@ import { QrFullscreenModal } from './qr-fullscreen-modal';
 import { QrAnimatedPreview } from './qr-animated-preview';
 import { sanitizeFilename, QR_BYTE_WARN_THRESHOLD, MAX_QR_BYTES } from './qr-utils';
 import type { StyleData, QrMode } from './qr-types';
+import styles from './qr-preview.module.css';
 
 interface QrMeta {
   title: string;
@@ -168,146 +169,116 @@ export function QrPreview({
   const warn = byteSize > QR_BYTE_WARN_THRESHOLD;
   const busy = exportProgress !== null;
 
-  const btnPrimary =
-    'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#5eead4] text-gray-900 text-sm font-medium hover:bg-[#5eead4]/90 transition-colors disabled:opacity-60';
-  const btnSecondary =
-    'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-700 text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-60';
-
   return (
-    <div className="space-y-3">
+    <div className={styles.root}>
       <div
-        className="relative rounded-xl overflow-hidden border border-gray-700 flex items-center justify-center p-4 cursor-pointer group"
+        className={`${styles.canvasFrame} ${lightBg ? styles.canvasFrameLight : styles.canvasFrameDark}`}
         onClick={openModal}
-        style={{
-          background: lightBg
-            ? 'repeating-conic-gradient(#f3f4f6 0% 25%, #e5e7eb 0% 50%) 0 0 / 16px 16px'
-            : 'repeating-conic-gradient(#2a2d37 0% 25%, #1a1d23 0% 50%) 0 0 / 16px 16px',
-        }}
       >
         {isAnimated && (
           <QrAnimatedPreview maskDataUrl={maskDataUrl} style={style} size={style.qrSize} />
         )}
         <canvas
           ref={canvasRef}
-          className="max-w-full h-auto rounded-lg"
-          style={{ imageRendering: 'pixelated', display: isAnimated ? 'none' : undefined }}
+          className={styles.canvas}
+          style={{ display: isAnimated ? 'none' : undefined }}
         />
-        <div className="absolute top-2 right-2 flex gap-1 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className={styles.overlay}>
           <button
-            className="p-1.5 rounded-md bg-black/50 text-white"
+            type="button"
+            className={styles.overlayBtn}
             onClick={(e) => {
               e.stopPropagation();
               onToggleBg();
             }}
+            title={lightBg ? 'Use dark background' : 'Use light background'}
           >
-            {lightBg ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            {lightBg ? <Moon size={14} /> : <Sun size={14} />}
           </button>
-          <button className="p-1.5 rounded-md bg-black/50 text-white">
-            <Maximize2 className="w-4 h-4" />
+          <button type="button" className={styles.overlayBtn} title="Fullscreen">
+            <Maximize2 size={14} />
           </button>
         </div>
       </div>
 
       {qrMeta.title && (
-        <div className="text-center">
-          <p className="font-medium text-sm">{qrMeta.title}</p>
-          {qrMeta.sub && <p className="text-xs text-gray-400">{qrMeta.sub}</p>}
+        <div className={styles.meta}>
+          <p className={styles.metaTitle}>{qrMeta.title}</p>
+          {qrMeta.sub && <p className={styles.metaSub}>{qrMeta.sub}</p>}
         </div>
       )}
 
       {byteSize > 0 && (
-        <p className={`text-center text-xs font-mono ${warn ? 'text-amber-500' : 'text-gray-400'}`}>
+        <p className={`${styles.byteCount} ${warn ? styles.byteCountWarn : ''}`}>
           {byteSize.toLocaleString()} / {MAX_QR_BYTES.toLocaleString()} bytes
         </p>
       )}
 
       {busy && (
-        <div className="space-y-1">
-          <div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+        <div>
+          <div className={styles.progressBar}>
             {exportProgress === -1 ? (
-              <div className="bg-[#5eead4] h-1.5 rounded-full w-full animate-pulse" />
+              <div className={styles.progressIndeterminate} />
             ) : (
-              <div
-                className="bg-[#5eead4] h-1.5 rounded-full transition-all duration-150"
-                style={{ width: `${exportProgress}%` }}
-              />
+              <div className={styles.progressFill} style={{ width: `${exportProgress}%` }} />
             )}
           </div>
-          {exportLabel && (
-            <p className="text-center text-xs text-gray-400">Exporting {exportLabel}...</p>
-          )}
+          {exportLabel && <p className={styles.progressLabel}>Exporting {exportLabel}…</p>}
         </div>
       )}
 
       {isAnimated ? (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <button className={btnPrimary} onClick={downloadMp4} disabled={busy}>
-              <Download className="w-3.5 h-3.5" />
-              MP4
+        <div className={styles.actions}>
+          <div className={styles.actionRow}>
+            <button type="button" className={`btn btn-primary ${styles.actionBtn}`} onClick={downloadMp4} disabled={busy}>
+              <Download size={14} /> MP4
             </button>
-            <button className={btnSecondary} onClick={downloadGif} disabled={busy}>
-              <Download className="w-3.5 h-3.5" />
-              GIF
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadGif} disabled={busy}>
+              <Download size={14} /> GIF
             </button>
-            <button className={btnSecondary} onClick={downloadWebm} disabled={busy}>
-              <Download className="w-3.5 h-3.5" />
-              WebM
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadWebm} disabled={busy}>
+              <Download size={14} /> WebM
             </button>
           </div>
-          <div className="flex gap-2">
-            <button
-              className={btnSecondary}
-              onClick={() => downloadAnimatedFrame('png')}
-              disabled={busy}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              PNG
+          <div className={styles.actionRow}>
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={() => downloadAnimatedFrame('png')} disabled={busy}>
+              <ImageIcon size={14} /> PNG
             </button>
-            <button
-              className={btnSecondary}
-              onClick={() => downloadAnimatedFrame('webp')}
-              disabled={busy}
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              WebP
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={() => downloadAnimatedFrame('webp')} disabled={busy}>
+              <ImageIcon size={14} /> WebP
             </button>
             {mode === 'contact' && (
-              <button className={btnSecondary} onClick={downloadVcf} disabled={!qrData || busy}>
-                <FileDown className="w-3.5 h-3.5" />
-                .vcf
+              <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadVcf} disabled={!qrData || busy}>
+                <FileDown size={14} /> .vcf
               </button>
             )}
-            <button className={btnSecondary} onClick={copyData} disabled={!qrData || busy}>
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={copyData} disabled={!qrData || busy}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex gap-2">
-          <button className={btnPrimary} onClick={downloadPng} disabled={busy}>
-            <Download className="w-3.5 h-3.5" />
-            PNG
+        <div className={styles.actionRow}>
+          <button type="button" className={`btn btn-primary ${styles.actionBtn}`} onClick={downloadPng} disabled={busy}>
+            <Download size={14} /> PNG
           </button>
-          <button className={btnSecondary} onClick={downloadWebp} disabled={busy}>
-            <Download className="w-3.5 h-3.5" />
-            WebP
+          <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadWebp} disabled={busy}>
+            <Download size={14} /> WebP
           </button>
           {mode === 'contact' && (
-            <button className={btnSecondary} onClick={downloadVcf} disabled={!qrData || busy}>
-              <FileDown className="w-3.5 h-3.5" />
-              .vcf
+            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadVcf} disabled={!qrData || busy}>
+              <FileDown size={14} /> .vcf
             </button>
           )}
-          <button className={btnSecondary} onClick={copyData} disabled={!qrData || busy}>
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={copyData} disabled={!qrData || busy}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
       )}
 
-      <a ref={downloadRef} className="hidden" />
+      <a ref={downloadRef} className={styles.hiddenAnchor} />
 
       {showModal && (
         <QrFullscreenModal

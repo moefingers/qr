@@ -1,0 +1,209 @@
+.frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-3) * var(--app-margin));
+  padding: calc(var(--space-3) * var(--app-pad)) calc(var(--space-4) * var(--app-pad));
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.headerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--muted-foreground);
+}
+
+.headerLabel svg {
+  color: var(--primary);
+}
+
+.importBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) * var(--app-margin));
+  padding: calc(var(--space-1) * var(--app-pad)) calc(var(--space-3) * var(--app-pad));
+  border-radius: var(--radius-full);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary);
+  background: oklch(from var(--primary) l c h / 0.1);
+  border: 1px solid oklch(from var(--primary) l c h / 0.25);
+  cursor: pointer;
+  transition: background var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default);
+
+  &:hover {
+    background: oklch(from var(--primary) l c h / 0.18);
+    border-color: oklch(from var(--primary) l c h / 0.4);
+  }
+
+  & input {
+    display: none;
+  }
+}
+
+.importHidden {
+  visibility: hidden;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.tab {
+  position: relative;
+  padding: calc(var(--space-3) * var(--app-pad)) calc(var(--space-4) * var(--app-pad));
+  font-size: calc(var(--font-size-sm) * var(--app-size));
+  font-weight: var(--font-weight-medium);
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--duration-normal) var(--ease-default);
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--foreground);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+
+.tabActive {
+  color: var(--primary);
+}
+
+.tabActive::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-2) * var(--app-pad));
+  right: calc(var(--space-2) * var(--app-pad));
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.panel {
+  padding: calc(var(--space-4) * var(--app-pad)) calc(var(--space-5) * var(--app-pad));
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+@media (max-width: 480px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.requiredMark {
+  color: var(--primary);
+  margin-inline-start: 2px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin-block: calc(var(--space-2) * var(--app-margin));
+}
+
+.sectionLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--muted-foreground);
+  margin-bottom: calc(var(--space-2) * var(--app-margin));
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+  min-height: calc(2.25rem * var(--app-pad));
+}
+
+.toggle {
+  position: relative;
+  width: calc(2.5rem * var(--app-pad));
+  height: calc(1.375rem * var(--app-pad));
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--duration-normal) var(--ease-default),
+    border-color var(--duration-normal) var(--ease-default);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: calc(1rem * var(--app-pad));
+  height: calc(1rem * var(--app-pad));
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-50%);
+  transition: left var(--duration-normal) var(--ease-default);
+}
+
+.toggleOn {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.toggleOn .toggleKnob {
+  left: calc(100% - 2px - 1rem * var(--app-pad));
+  background: var(--primary-foreground);
+}
+
+.toggleLabel {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: calc(3.25rem * var(--app-pad));
+}
+
+.textareaLarge {
+  min-height: calc(7.5rem * var(--app-pad));
+}

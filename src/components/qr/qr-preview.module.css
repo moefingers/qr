@@ -1,0 +1,189 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+.canvasFrame {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-4) * var(--app-pad));
+  cursor: pointer;
+}
+
+.canvasFrameLight {
+  background: repeating-conic-gradient(
+      oklch(0.95 0.002 286) 0 25%,
+      oklch(0.88 0.003 286) 0 50%
+    )
+    0 0 / 16px 16px;
+}
+
+.canvasFrameDark {
+  background: repeating-conic-gradient(
+      oklch(0.27 0.006 286) 0 25%,
+      oklch(0.21 0.006 286) 0 50%
+    )
+    0 0 / 16px 16px;
+}
+
+.canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  image-rendering: pixelated;
+}
+
+.overlay {
+  position: absolute;
+  top: calc(var(--space-2) * var(--app-pad));
+  right: calc(var(--space-2) * var(--app-pad));
+  display: flex;
+  gap: calc(var(--space-1) * var(--app-margin));
+  opacity: 0.6;
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+
+.canvasFrame:hover .overlay,
+.canvasFrame:focus-within .overlay {
+  opacity: 1;
+}
+
+.overlayBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(1.75rem * var(--app-pad));
+  height: calc(1.75rem * var(--app-pad));
+  border-radius: var(--radius-md);
+  background: oklch(0 0 0 / 0.55);
+  color: oklch(1 0 0);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: oklch(0 0 0 / 0.75);
+  }
+}
+
+.meta {
+  text-align: center;
+}
+
+.metaTitle {
+  font-size: calc(var(--font-size-sm) * var(--app-size));
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+}
+
+.metaSub {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+
+.byteCount {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.byteCountWarn {
+  color: var(--warning);
+}
+
+.progressBar {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-fast) linear;
+}
+
+.progressIndeterminate {
+  height: 100%;
+  width: 100%;
+  background: var(--primary);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.progressLabel {
+  text-align: center;
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  color: var(--muted-foreground);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.actionRow {
+  display: flex;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.actionBtn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hiddenAnchor {
+  display: none;
+}
+
+/* EC safety bar — phase 1 will populate this with real fill + label. */
+.ecBar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+}
+
+.ecTrack {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  position: relative;
+  overflow: hidden;
+}
+
+.ecFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-normal) var(--ease-default);
+}
+
+.ecBudget {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--foreground);
+}
+
+.ecLabel {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+}

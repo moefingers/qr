@@ -1,0 +1,66 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+.overlayLight {
+  background: oklch(1 0 0 / 0.85);
+}
+
+.overlayDark {
+  background: oklch(0 0 0 / 0.85);
+}
+
+.closeBtn {
+  position: absolute;
+  top: calc(var(--space-4) * var(--app-pad));
+  right: calc(var(--space-4) * var(--app-pad));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(2.5rem * var(--app-pad));
+  height: calc(2.5rem * var(--app-pad));
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+.closeBtnLight {
+  background: oklch(0 0 0 / 0.1);
+  color: oklch(0.21 0.006 286);
+
+  &:hover {
+    background: oklch(0 0 0 / 0.2);
+  }
+}
+
+.closeBtnDark {
+  background: oklch(1 0 0 / 0.12);
+  color: oklch(1 0 0);
+
+  &:hover {
+    background: oklch(1 0 0 / 0.22);
+  }
+}
+
+.stage {
+  /* Square box for the QR — fullscreen-friendly. The animated preview's
+     mask fills width 100% inside this; the static <canvas> clone is sized
+     manually in JS. */
+  width: min(90vmin, 90vmin);
+  height: min(90vmin, 90vmin);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

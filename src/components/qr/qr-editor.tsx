@@ -24,6 +24,8 @@ import { renderQrToCanvas, generateQrMatrix } from './qr-canvas-renderer';
 import { computeDodgeMask } from './qr-dot-dodge';
 import { RENDER_DEBOUNCE_MS, SAVE_DEBOUNCE_MS } from './qr-utils';
 import { QrCode } from 'lucide-react';
+import { ThemeToggle } from '../ui/theme-toggle';
+import styles from './qr-editor.module.css';
 
 const STORAGE_KEY = 'qr-editor-state';
 
@@ -232,34 +234,32 @@ export function QrEditor() {
   const fileName = getFileName(mode, vcardData, wifiData);
 
   return (
-    <div className="min-h-screen bg-[#0b0c0e] text-[#e4e5e9]">
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        {/* Header */}
-        <header className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#131519] border border-gray-700">
-              <QrCode className="w-6 h-6 text-[#5eead4]" />
+    <div className={styles.shell}>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div className={styles.titleBlock}>
+            <div className={styles.titleRow}>
+              <div className={styles.iconTile}>
+                <QrCode size={24} />
+              </div>
+              <div className={styles.headingGroup}>
+                <span className="badge badge-accent">Offline · Universal · Any data</span>
+                <h1 className={styles.title}>Styled QR Generator</h1>
+              </div>
             </div>
-            <div>
-              <span className="inline-block px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-[#5eead4]/10 text-[#5eead4] rounded-full mb-1">
-                Offline - Universal - Any Data
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight">Styled QR Generator</h1>
-            </div>
+            <p className={styles.subtitle}>
+              Generate customizable QR codes for contacts, URLs, WiFi, email, SMS, or plain text.
+            </p>
           </div>
-          <p className="text-sm text-gray-400 ml-14">
-            Generate customizable QR codes for contacts, URLs, WiFi, email, SMS, or plain text.
-          </p>
+          <div className={styles.headerActions}>
+            <ThemeToggle />
+          </div>
         </header>
 
-        {/* Main layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
-          <div className="space-y-6">
-            {/* Data input section */}
-            <section className="rounded-xl bg-[#131519] border border-gray-700 p-5">
-              <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
-                QR Data
-              </h2>
+        <div className={styles.layout}>
+          <div className={styles.column}>
+            <section className={styles.section}>
+              <h2 className={styles.sectionHeading}>QR Data</h2>
               <QrDataInput
                 mode={mode}
                 onModeChange={setMode}
@@ -278,11 +278,8 @@ export function QrEditor() {
               />
             </section>
 
-            {/* Style section */}
-            <section className="rounded-xl bg-[#131519] border border-gray-700 p-5">
-              <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
-                Style
-              </h2>
+            <section className={styles.section}>
+              <h2 className={styles.sectionHeading}>Style</h2>
               <QrStyleControls
                 style={styleData}
                 onChange={setStyleData}
@@ -293,9 +290,8 @@ export function QrEditor() {
             </section>
           </div>
 
-          {/* Preview panel */}
-          <div className="lg:sticky lg:top-6">
-            <section className="rounded-xl bg-[#131519] border border-gray-700 p-4">
+          <div className={styles.previewColumn}>
+            <section className={styles.section}>
               <QrPreview
                 canvasRef={canvasRef}
                 maskDataUrl={maskDataUrl}

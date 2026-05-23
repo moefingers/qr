@@ -1,0 +1,123 @@
+.shell {
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: calc(var(--space-6) * var(--app-pad)) calc(var(--space-4) * var(--app-pad));
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-6) * var(--app-margin));
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--space-4) * var(--app-margin));
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-3) * var(--app-margin));
+}
+
+.iconTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(2.75rem * var(--app-pad));
+  height: calc(2.75rem * var(--app-pad));
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.headingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: calc(var(--font-size-2xl) * var(--app-size));
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.1;
+}
+
+.subtitle {
+  font-size: calc(var(--font-size-sm) * var(--app-size));
+  color: var(--muted-foreground);
+  margin-inline-start: calc(3.75rem * var(--app-margin));
+  max-width: 60ch;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) * var(--app-margin));
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: calc(var(--space-6) * var(--app-margin));
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: 1fr 22rem;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-6) * var(--app-margin));
+  min-width: 0;
+}
+
+.section {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: calc(var(--space-5) * var(--app-pad));
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) * var(--app-margin));
+}
+
+.sectionHeading {
+  font-size: calc(var(--font-size-xs) * var(--app-size));
+  font-weight: var(--font-weight-semibold);
+  color: var(--muted-foreground);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.previewColumn {
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .previewColumn {
+    position: sticky;
+    top: calc(var(--space-6) * var(--app-margin));
+  }
+}

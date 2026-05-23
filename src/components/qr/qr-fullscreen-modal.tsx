@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { StyleData } from './qr-types';
 import { QrAnimatedPreview } from './qr-animated-preview';
+import styles from './qr-fullscreen-modal.module.css';
 
 interface Props {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -13,6 +14,7 @@ interface Props {
 
 export function QrFullscreenModal({ canvasRef, maskDataUrl, style, lightBg, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isAnimated = !!maskDataUrl && style.animationType !== 'none';
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -23,43 +25,42 @@ export function QrFullscreenModal({ canvasRef, maskDataUrl, style, lightBg, onCl
   }, [onClose]);
 
   useEffect(() => {
-    if (maskDataUrl && style.animationType !== 'none') return;
+    if (isAnimated) return;
     const canvas = canvasRef.current;
     if (!canvas || !containerRef.current) return;
     const clone = document.createElement('canvas');
     clone.width = canvas.width;
     clone.height = canvas.height;
-    clone.style.maxWidth = '90vmin';
-    clone.style.maxHeight = '90vmin';
+    clone.style.maxWidth = '100%';
+    clone.style.maxHeight = '100%';
     clone.style.borderRadius = '12px';
     clone.getContext('2d')!.drawImage(canvas, 0, 0);
     containerRef.current.innerHTML = '';
     containerRef.current.appendChild(clone);
-  }, [canvasRef, maskDataUrl, style]);
-
-  const isAnimated = maskDataUrl && style.animationType !== 'none';
+  }, [canvasRef, maskDataUrl, style, isAnimated]);
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center backdrop-blur-sm"
-      style={{ backgroundColor: lightBg ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)' }}
+      className={`${styles.overlay} ${lightBg ? styles.overlayLight : styles.overlayDark}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <button
-        className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${lightBg ? 'bg-black/10 hover:bg-black/20 text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+        type="button"
+        className={`${styles.closeBtn} ${lightBg ? styles.closeBtnLight : styles.closeBtnDark}`}
         onClick={onClose}
+        aria-label="Close"
       >
-        <X className="w-5 h-5" />
+        <X size={20} />
       </button>
-      {isAnimated ? (
-        <div style={{ maxWidth: '90vmin', maxHeight: '90vmin' }}>
-          <QrAnimatedPreview maskDataUrl={maskDataUrl} style={style} size={style.qrSize} />
-        </div>
-      ) : (
-        <div ref={containerRef} className="flex items-center justify-center" />
-      )}
+      <div className={styles.stage}>
+        {isAnimated ? (
+          <QrAnimatedPreview maskDataUrl={maskDataUrl!} style={style} size={style.qrSize} />
+        ) : (
+          <div ref={containerRef} />
+        )}
+      </div>
     </div>
   );
 }
