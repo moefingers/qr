@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release:patch": "pnpm version patch -m \"chore(release): v%s\" && git push --follow-tags",
+    "release:minor": "pnpm version minor -m \"chore(release): v%s\" && git push --follow-tags",
+    "release:major": "pnpm version major -m \"chore(release): v%s\" && git push --follow-tags"
   },
   "dependencies": {
     "gifenc": "^1.0.3",

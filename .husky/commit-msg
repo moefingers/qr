@@ -1,0 +1,51 @@
+#!/usr/bin/env sh
+
+# Enforce Conventional Commits (https://www.conventionalcommits.org/) so that
+# `gh release create --generate-notes` produces a readable changelog.
+#
+# Allowed shape:
+#   <type>(<optional scope>)<optional !>: <subject>
+#
+# Examples:
+#   feat: add source link
+#   fix(canvas): strip existing root fill
+#   chore(release): v2.0.1
+#   feat(api)!: rename `getCwd` to `getCurrentWorkingDirectory`
+#
+# Bypassed for merges, reverts, and fixups (git handles these formats itself).
+
+commit_msg_file="$1"
+first_line=$(head -n1 "$commit_msg_file")
+
+# Allow merge/revert/fixup/squash commits — git generates these, not the user.
+case "$first_line" in
+  "Merge "* | "Revert "* | "fixup! "* | "squash! "* | "amend! "*)
+    exit 0
+    ;;
+esac
+
+# Conventional Commits regex. Types are the standard set; add to this list
+# (sorted) if a new type is genuinely needed.
+pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._/-]+\))?!?: .{1,100}$'
+
+if ! printf '%s' "$first_line" | grep -Eq "$pattern"; then
+  echo "----------------------------------------------------------------------"
+  echo "Commit message rejected — must follow Conventional Commits."
+  echo ""
+  echo "  <type>(<optional scope>)<optional !>: <subject>"
+  echo ""
+  echo "  Types: build chore ci docs feat fix perf refactor revert style test"
+  echo "  Subject: 1-100 chars, no trailing period."
+  echo "  Use '!' after type/scope to flag a breaking change."
+  echo ""
+  echo "Examples:"
+  echo "  feat: add source link to editor header"
+  echo "  fix(canvas): strip existing root fill before injecting"
+  echo "  chore(release): v2.0.1"
+  echo "  feat(api)!: rename getCwd to getCurrentWorkingDirectory"
+  echo ""
+  echo "Your message:"
+  echo "  $first_line"
+  echo "----------------------------------------------------------------------"
+  exit 1
+fi

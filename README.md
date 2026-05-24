@@ -77,4 +77,20 @@ The resulting `index.html` makes zero network requests at runtime. Verified by o
 
 ## Deployment
 
-Built and deployed automatically to GitHub Pages via Actions on push to `shepherd`. Pre-commit hook runs TypeScript and ESLint via husky.
+Built and deployed automatically to GitHub Pages via Actions on push to `shepherd`. Pre-commit hook runs TypeScript and ESLint via husky; commit-msg hook enforces [Conventional Commits](https://www.conventionalcommits.org/).
+
+## Releasing
+
+Releases follow [SemVer](https://semver.org/) and are cut by pushing a `vX.Y.Z` tag. The release workflow (`.github/workflows/release.yml`) builds the project, verifies the tag matches `package.json`, and creates a GitHub Release with auto-generated notes and `dist/index.html` attached as a downloadable asset. The Pages deploy fires separately from the same `shepherd` push.
+
+To cut a release:
+
+```
+pnpm release:patch   # 2.0.0 → 2.0.1
+pnpm release:minor   # 2.0.0 → 2.1.0
+pnpm release:major   # 2.0.0 → 3.0.0
+```
+
+Each script runs `pnpm version <bump>`, which bumps `package.json`, creates a `chore(release): vX.Y.Z` commit, and tags it. Then `git push --follow-tags` ships the commit to `shepherd` and the tag to origin, triggering both the Pages deploy and the release workflow.
+
+After the workflow finishes, edit the release on github.com if you want to add prose above the auto-generated commit list — see [CHANGELOG.md](CHANGELOG.md) for the project changelog kept in the repo.
