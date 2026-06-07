@@ -9,6 +9,7 @@ import type {
   EmailData,
   SmsData,
   QrMode,
+  AnimationLayers,
 } from './qr-types';
 import {
   DEFAULT_STYLE,
@@ -25,11 +26,21 @@ import {
   buildEmail,
   buildSms,
 } from './qr-data-builder';
-import { renderQrToCanvas, generateQrMatrix } from './qr-canvas-renderer';
+import {
+  renderQrToCanvas,
+  generateQrMatrix,
+  renderLogoLayer,
+} from './qr-canvas-renderer';
 import { computeDodgeMask } from './qr-dot-dodge';
 import { QrAnimatedPreview } from './qr-animated-preview';
 import { ThemeToggle } from '../ui/theme-toggle';
 import styles from './qr-presenter.module.css';
+
+const NO_LAYERS: AnimationLayers = {
+  colorMaskUrl: null,
+  baseImageUrl: null,
+  logoLayerUrl: null,
+};
 
 interface SaveEntry {
   id: string;
@@ -86,7 +97,10 @@ function loadSaves(): SaveEntry[] {
       return {
         id: typeof r.id === 'string' ? r.id : `legacy-${i}`,
         name: typeof r.name === 'string' ? r.name : `Save ${i + 1}`,
-        styleData: { ...DEFAULT_STYLE, ...(r.styleData ?? r.style ?? {}) } as StyleData,
+        styleData: {
+          ...DEFAULT_STYLE,
+          ...(r.styleData ?? r.style ?? {}),
+        } as StyleData,
         customLogo: (r.customLogo as string | null | undefined) ?? null,
       };
     });
@@ -141,7 +155,10 @@ type ActiveSource =
 // Resolve the initial active selection from saves + URL + primary pin.
 // Kept outside the component so it stays as a pure function we can call
 // from a useState initializer (no setState-in-effect).
-function resolveInitialActiveId(savesList: SaveEntry[], pinned: string | null): string | null {
+function resolveInitialActiveId(
+  savesList: SaveEntry[],
+  pinned: string | null,
+): string | null {
   const urlId = getUrlId();
   if (urlId && savesList.some((s) => s.id === urlId)) return urlId;
   if (pinned && savesList.some((s) => s.id === pinned)) return pinned;
@@ -155,20 +172,22 @@ export function QrPresenter() {
   // every visit before the storage read completes.
   const [saves, setSaves] = useState<SaveEntry[]>(() => loadSaves());
   const [draft, setDraft] = useState<LiveDraft | null>(() => loadDraft());
-  const [primaryId, setPrimaryId] = useState<string | null>(() => loadPrimary());
+  const [primaryId, setPrimaryId] = useState<string | null>(() =>
+    loadPrimary(),
+  );
   const [activeId, setActiveId] = useState<string | null>(() =>
     resolveInitialActiveId(loadSaves(), loadPrimary()),
   );
 
-  const [online, setOnline] = useState(
-    () => (typeof navigator === 'undefined' ? true : navigator.onLine),
+  const [online, setOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine,
   );
   // The presenter's light/dark surface follows the canonical theme mode.
   // No local toggle — one source of truth, one control, one mental model.
   const { resolvedMode } = useTheme();
   const lightBg = resolvedMode === 'light';
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
+  const [layers, setLayers] = useState<AnimationLayers>(NO_LAYERS);
   const [overlayVisible, setOverlayVisible] = useState(true);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -347,7 +366,20 @@ export function QrPresenter() {
       logoColorSync: !activeStyle.logoIndependent,
     });
 
-    if (activeStyle.animationType !== 'none') {
+    const colorAnim = activeStyle.animationType !== 'none';
+    const redrawLogo = !!activeLogo && !activeStyle.logoColorOver;
+    const logoMotion = redrawLogo && activeStyle.logoAnimationType !== 'none';
+
+    if (!colorAnim && !logoMotion) {
+      setLayers(NO_LAYERS);
+      return;
+    }
+
+    let colorMaskUrl: string | null = null;
+    let baseImageUrl: string | null = null;
+    let logoLayerUrl: string | null = null;
+
+    if (colorAnim) {
       const maskCanvas = document.createElement('canvas');
       await renderQrToCanvas({
         canvas: maskCanvas,
@@ -363,11 +395,36 @@ export function QrPresenter() {
         logoSvgMarkup: svgMarkupRef.current,
         dodgeMask,
         logoColorSync: !activeStyle.logoIndependent,
+        skipLogo: redrawLogo,
       });
-      setMaskDataUrl(maskCanvas.toDataURL());
+      colorMaskUrl = maskCanvas.toDataURL();
     } else {
-      setMaskDataUrl(null);
+      const baseCanvas = document.createElement('canvas');
+      await renderQrToCanvas({
+        canvas: baseCanvas,
+        data: active.dataString,
+        style: activeStyle,
+        logoImg: logoImgRef.current,
+        logoSvgMarkup: svgMarkupRef.current,
+        dodgeMask,
+        logoColorSync: !activeStyle.logoIndependent,
+        skipLogo: true,
+      });
+      baseImageUrl = baseCanvas.toDataURL();
     }
+
+    if (redrawLogo) {
+      const layer = await renderLogoLayer({
+        canvasSize: activeStyle.qrSize,
+        style: activeStyle,
+        logoImg: logoImgRef.current,
+        logoSvgMarkup: svgMarkupRef.current,
+        logoColorSync: !activeStyle.logoIndependent,
+      });
+      logoLayerUrl = layer ? layer.toDataURL() : null;
+    }
+
+    setLayers({ colorMaskUrl, baseImageUrl, logoLayerUrl });
     // logoLoadKey is included to retrigger after async logo load completes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, activeStyle, activeLogo, logoLoadKey]);
@@ -382,7 +439,7 @@ export function QrPresenter() {
     doRender();
   }, [doRender]);
 
-  const isAnimated = !!(maskDataUrl && activeStyle && activeStyle.animationType !== 'none');
+  const isAnimated = !!(layers.colorMaskUrl || layers.baseImageUrl);
 
   if (!active || !activeStyle) {
     return (
@@ -390,8 +447,8 @@ export function QrPresenter() {
         <div className={styles.emptyState}>
           <h1>No QR yet</h1>
           <p>
-            Open the editor and create or save a QR. Once anything is saved, this screen will
-            display it.
+            Open the editor and create or save a QR. Once anything is saved,
+            this screen will display it.
           </p>
           <a href="#" className={`btn btn-primary ${styles.homeLink}`}>
             Open QR editor
@@ -406,16 +463,27 @@ export function QrPresenter() {
   const headerLightCls = lightBg ? styles.headerLight : styles.headerDark;
   const footerLightCls = lightBg ? styles.footerLight : styles.footerDark;
   const chromeLightCls = lightBg ? styles.chromeBtnLight : styles.chromeBtnDark;
-  const pickerLightCls = lightBg ? styles.pickerMenuLight : styles.pickerMenuDark;
-  const pickerRowLightCls = lightBg ? styles.pickerRowLight : styles.pickerRowDark;
+  const pickerLightCls = lightBg
+    ? styles.pickerMenuLight
+    : styles.pickerMenuDark;
+  const pickerRowLightCls = lightBg
+    ? styles.pickerRowLight
+    : styles.pickerRowDark;
 
   return (
-    <main className={`${styles.shell} ${lightCls}`} onClick={() => setOverlayVisible((v) => !v)}>
+    <main
+      className={`${styles.shell} ${lightCls}`}
+      onClick={() => setOverlayVisible((v) => !v)}
+    >
       <header
         className={`${styles.header} ${headerLightCls} ${overlayCls}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <a href="#" className={`${styles.chromeBtn} ${chromeLightCls}`} aria-label="Back to editor">
+        <a
+          href="#"
+          className={`${styles.chromeBtn} ${chromeLightCls}`}
+          aria-label="Back to editor"
+        >
           <ArrowLeft size={16} />
           Editor
         </a>
@@ -428,7 +496,12 @@ export function QrPresenter() {
             disabled={saves.length === 0 && !draft}
           >
             {activeId !== null && primaryId === activeId && (
-              <Star size={14} className={styles.pickerStar} fill="currentColor" aria-hidden />
+              <Star
+                size={14}
+                className={styles.pickerStar}
+                fill="currentColor"
+                aria-hidden
+              />
             )}
             <span className={styles.pickerLabel}>{activeName}</span>
             {(saves.length > 0 || draft) && <ChevronDown size={16} />}
@@ -455,7 +528,10 @@ export function QrPresenter() {
               {saves.map((s) => {
                 const isThisPrimary = primaryId === s.id;
                 return (
-                  <div key={s.id} className={`${styles.pickerRow} ${pickerRowLightCls}`}>
+                  <div
+                    key={s.id}
+                    className={`${styles.pickerRow} ${pickerRowLightCls}`}
+                  >
                     <button
                       type="button"
                       className={`${styles.pickerItem} ${activeId === s.id ? styles.pickerItemActive : ''}`}
@@ -473,11 +549,18 @@ export function QrPresenter() {
                         e.stopPropagation();
                         togglePrimary(s.id);
                       }}
-                      title={isThisPrimary ? 'Unset as primary' : 'Set as primary'}
-                      aria-label={isThisPrimary ? 'Unset as primary' : 'Set as primary'}
+                      title={
+                        isThisPrimary ? 'Unset as primary' : 'Set as primary'
+                      }
+                      aria-label={
+                        isThisPrimary ? 'Unset as primary' : 'Set as primary'
+                      }
                       aria-pressed={isThisPrimary}
                     >
-                      <Star size={16} fill={isThisPrimary ? 'currentColor' : 'none'} />
+                      <Star
+                        size={16}
+                        fill={isThisPrimary ? 'currentColor' : 'none'}
+                      />
                     </button>
                   </div>
                 );
@@ -498,9 +581,9 @@ export function QrPresenter() {
       </header>
 
       <div className={styles.qrStage}>
-        {isAnimated && maskDataUrl && (
+        {isAnimated && (
           <QrAnimatedPreview
-            maskDataUrl={maskDataUrl}
+            layers={layers}
             style={activeStyle}
             size={activeStyle.qrSize}
           />

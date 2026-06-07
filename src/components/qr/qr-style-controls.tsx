@@ -10,11 +10,17 @@ import type {
   AnimationDirection,
   AnimationTimingFunction,
   AnimationStop,
+  AnimationLayers,
+  LogoAnimationType,
 } from './qr-types';
 import { DEFAULT_STYLE } from './qr-types';
 import { QR_PRESETS } from './qr-presets';
 import { QrAnimatedPreview } from './qr-animated-preview';
-import { renderQrToCanvas, generateQrMatrix } from './qr-canvas-renderer';
+import {
+  renderQrToCanvas,
+  generateQrMatrix,
+  renderLogoLayer,
+} from './qr-canvas-renderer';
 import { computeDodgeMask } from './qr-dot-dodge';
 import styles from './qr-style-controls.module.css';
 
@@ -25,7 +31,10 @@ import styles from './qr-style-controls.module.css';
 // same amount AND that shift must be an integer multiple of the band
 // period (lastStop - firstStop). Other types either bounce or wrap
 // inherently and don't need this check.
-function checkLoopSeamless(type: AnimationType, stops: AnimationStop[]): string | null {
+function checkLoopSeamless(
+  type: AnimationType,
+  stops: AnimationStop[],
+): string | null {
   if (type !== 'sweep' && type !== 'radialLoop') return null;
   if (!Array.isArray(stops) || stops.length < 2) return null;
 
@@ -60,13 +69,18 @@ function getAnimationDirectionPreset(type: AnimationType): AnimationDirection {
 // Per-type default for the timing function. Breathe wants ease-out for
 // its gentle exhale, wave wants ease-in-out so the swell rises and falls
 // smoothly. Everything else stays linear.
-function getAnimationTimingPreset(type: AnimationType): AnimationTimingFunction {
+function getAnimationTimingPreset(
+  type: AnimationType,
+): AnimationTimingFunction {
   if (type === 'breathe') return 'ease-out';
   if (type === 'wave') return 'ease-in-out';
   return 'linear';
 }
 
-function getAnimationStopPreset(type: AnimationType, dotColor: string): AnimationStop[] | null {
+function getAnimationStopPreset(
+  type: AnimationType,
+  dotColor: string,
+): AnimationStop[] | null {
   const accent = '#5eead4';
   switch (type) {
     case 'breathe':
@@ -100,21 +114,46 @@ function getAnimationStopPreset(type: AnimationType, dotColor: string): Animatio
       return [
         { color: dotColor, colorEnd: dotColor, position: 0, positionEnd: 0 },
         { color: accent, colorEnd: accent, position: 50, positionEnd: 50 },
-        { color: dotColor, colorEnd: dotColor, position: 100, positionEnd: 100 },
+        {
+          color: dotColor,
+          colorEnd: dotColor,
+          position: 100,
+          positionEnd: 100,
+        },
       ];
     case 'spiral':
       return [
         { color: dotColor, colorEnd: dotColor, position: 0, positionEnd: 0 },
         { color: accent, colorEnd: accent, position: 50, positionEnd: 50 },
-        { color: dotColor, colorEnd: dotColor, position: 100, positionEnd: 100 },
+        {
+          color: dotColor,
+          colorEnd: dotColor,
+          position: 100,
+          positionEnd: 100,
+        },
       ];
     case 'colorCycle':
       // Final stop matches first so wrap is seamless.
       return [
         { color: '#ef4444', colorEnd: '#ef4444', position: 0, positionEnd: 0 },
-        { color: '#10b981', colorEnd: '#10b981', position: 33, positionEnd: 33 },
-        { color: '#3b82f6', colorEnd: '#3b82f6', position: 67, positionEnd: 67 },
-        { color: '#ef4444', colorEnd: '#ef4444', position: 100, positionEnd: 100 },
+        {
+          color: '#10b981',
+          colorEnd: '#10b981',
+          position: 33,
+          positionEnd: 33,
+        },
+        {
+          color: '#3b82f6',
+          colorEnd: '#3b82f6',
+          position: 67,
+          positionEnd: 67,
+        },
+        {
+          color: '#ef4444',
+          colorEnd: '#ef4444',
+          position: 100,
+          positionEnd: 100,
+        },
       ];
     default:
       return null;
@@ -133,7 +172,14 @@ interface Props {
   qrData: string;
 }
 
-type Tab = 'presets' | 'saves' | 'colors' | 'dots' | 'logo' | 'animate' | 'advanced';
+type Tab =
+  | 'presets'
+  | 'saves'
+  | 'colors'
+  | 'dots'
+  | 'logo'
+  | 'animate'
+  | 'advanced';
 
 const DOT_SHAPES: { id: DotShape; label: string; icon: string }[] = [
   { id: 'square', label: 'Square', icon: '■' },
@@ -166,6 +212,19 @@ const DIRECTIONS: { id: AnimationDirection; label: string }[] = [
   { id: 'ccw', label: 'Reverse' },
   { id: 'alt', label: 'Bounce' },
 ];
+
+const LOGO_ANIMATION_TYPES: { id: LogoAnimationType; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'scale', label: 'Expand / contract' },
+  { id: 'flipX', label: 'Flip X' },
+];
+
+const NO_LAYERS: AnimationLayers = {
+  colorMaskUrl: null,
+  baseImageUrl: null,
+  logoLayerUrl: null,
+};
 
 export function QrStyleControls({
   style,
@@ -229,7 +288,10 @@ export function QrStyleControls({
               className={`${styles.optionTile} ${style.activePreset === p.id ? styles.optionTileActive : ''}`}
               onClick={() => applyPreset(p.id)}
             >
-              <div className={styles.swatch} style={{ background: p.preview.dot }} />
+              <div
+                className={styles.swatch}
+                style={{ background: p.preview.dot }}
+              />
               <span className={styles.optionLabel}>{p.name}</span>
             </button>
           ))}
@@ -252,8 +314,8 @@ export function QrStyleControls({
         <div className={styles.panel}>
           {style.animationType !== 'none' && (
             <div className="alert alert-warning">
-              Animation is on, so the dot color below is overridden by the animated gradient. Edit
-              the gradient stops in the{' '}
+              Animation is on, so the dot color below is overridden by the
+              animated gradient. Edit the gradient stops in the{' '}
               <button
                 type="button"
                 onClick={() => setTab('animate')}
@@ -272,28 +334,60 @@ export function QrStyleControls({
               .
             </div>
           )}
-          <ColorField label="Dot color" value={style.dotColor} onChange={(v) => set('dotColor', v)} />
-          <ColorField label="Background" value={style.bgColor} onChange={(v) => set('bgColor', v)} />
+          <ColorField
+            label="Dot color"
+            value={style.dotColor}
+            onChange={(v) => set('dotColor', v)}
+          />
+          <ColorField
+            label="Background"
+            value={style.bgColor}
+            onChange={(v) => set('bgColor', v)}
+          />
           <ColorField
             label="Corner color"
             value={style.cornerColor || style.dotColor}
             onChange={(v) => set('cornerColor', v)}
             hint="Leave empty to match dot color"
           />
-          <ToggleRow label="Transparent background" checked={style.transparentBg} onChange={(v) => set('transparentBg', v)} />
-          <ToggleRow label="Gradient" checked={style.useGradient} onChange={(v) => set('useGradient', v)} />
+          <ToggleRow
+            label="Transparent background"
+            checked={style.transparentBg}
+            onChange={(v) => set('transparentBg', v)}
+          />
+          <ToggleRow
+            label="Gradient"
+            checked={style.useGradient}
+            onChange={(v) => set('useGradient', v)}
+          />
           {style.useGradient && (
             <div className={styles.indented}>
-              <ColorField label="Gradient end" value={style.gradientEndColor} onChange={(v) => set('gradientEndColor', v)} />
+              <ColorField
+                label="Gradient end"
+                value={style.gradientEndColor}
+                onChange={(v) => set('gradientEndColor', v)}
+              />
               <label>
                 Type
-                <select value={style.gradientType} onChange={(e) => set('gradientType', e.target.value as GradientType)}>
+                <select
+                  value={style.gradientType}
+                  onChange={(e) =>
+                    set('gradientType', e.target.value as GradientType)
+                  }
+                >
                   <option value="linear">Linear</option>
                   <option value="radial">Radial</option>
                 </select>
               </label>
               {style.gradientType === 'linear' && (
-                <SliderField label="Angle" value={style.gradientAngle} min={0} max={360} onChange={(v) => set('gradientAngle', v)} suffix="deg" />
+                <SliderField
+                  label="Angle"
+                  value={style.gradientAngle}
+                  min={0}
+                  max={360}
+                  onChange={(v) => set('gradientAngle', v)}
+                  suffix="deg"
+                />
               )}
             </div>
           )}
@@ -319,7 +413,14 @@ export function QrStyleControls({
             </div>
           </div>
 
-          <SliderField label="Shape scale" value={style.shapeScale} min={60} max={160} onChange={(v) => set('shapeScale', v)} suffix="%" />
+          <SliderField
+            label="Shape scale"
+            value={style.shapeScale}
+            min={60}
+            max={160}
+            onChange={(v) => set('shapeScale', v)}
+            suffix="%"
+          />
 
           <div>
             <p className={styles.subHeading}>Corner outer</p>
@@ -380,7 +481,11 @@ export function QrStyleControls({
             </label>
             {customLogo && (
               <div className={styles.uploadActions}>
-                <button type="button" className={styles.removeBtn} onClick={() => onLogoChange(null)}>
+                <button
+                  type="button"
+                  className={styles.removeBtn}
+                  onClick={() => onLogoChange(null)}
+                >
                   Remove logo
                 </button>
               </div>
@@ -436,23 +541,54 @@ export function QrStyleControls({
                 suffix="%"
                 hint="Minimum logo coverage per module before it counts as 'logo' (0 = any pixel, 100 = fully solid)"
               />
-              <ToggleRow label="Independent styling" checked={style.logoIndependent} onChange={(v) => set('logoIndependent', v)} />
+              <ToggleRow
+                label="Independent styling"
+                checked={style.logoIndependent}
+                onChange={(v) => set('logoIndependent', v)}
+              />
               {style.logoIndependent && isSvgLogo && (
                 <div className={styles.indented}>
-                  <ColorField label="Logo color" value={style.logoColor} onChange={(v) => set('logoColor', v)} />
-                  <ToggleRow label="Logo gradient" checked={style.logoUseGradient} onChange={(v) => set('logoUseGradient', v)} />
+                  <ColorField
+                    label="Logo color"
+                    value={style.logoColor}
+                    onChange={(v) => set('logoColor', v)}
+                  />
+                  <ToggleRow
+                    label="Logo gradient"
+                    checked={style.logoUseGradient}
+                    onChange={(v) => set('logoUseGradient', v)}
+                  />
                   {style.logoUseGradient && (
                     <>
-                      <ColorField label="Gradient end" value={style.logoGradientEndColor} onChange={(v) => set('logoGradientEndColor', v)} />
+                      <ColorField
+                        label="Gradient end"
+                        value={style.logoGradientEndColor}
+                        onChange={(v) => set('logoGradientEndColor', v)}
+                      />
                       <label>
                         Type
-                        <select value={style.logoGradientType} onChange={(e) => set('logoGradientType', e.target.value as GradientType)}>
+                        <select
+                          value={style.logoGradientType}
+                          onChange={(e) =>
+                            set(
+                              'logoGradientType',
+                              e.target.value as GradientType,
+                            )
+                          }
+                        >
                           <option value="linear">Linear</option>
                           <option value="radial">Radial</option>
                         </select>
                       </label>
                       {style.logoGradientType === 'linear' && (
-                        <SliderField label="Angle" value={style.logoGradientAngle} min={0} max={360} onChange={(v) => set('logoGradientAngle', v)} suffix="deg" />
+                        <SliderField
+                          label="Angle"
+                          value={style.logoGradientAngle}
+                          min={0}
+                          max={360}
+                          onChange={(v) => set('logoGradientAngle', v)}
+                          suffix="deg"
+                        />
                       )}
                     </>
                   )}
@@ -460,9 +596,63 @@ export function QrStyleControls({
               )}
               {style.logoIndependent && !isSvgLogo && (
                 <div className={styles.indented}>
-                  <SliderField label="Hue shift" value={style.logoHueShift} min={0} max={360} onChange={(v) => set('logoHueShift', v)} suffix="deg" />
+                  <SliderField
+                    label="Hue shift"
+                    value={style.logoHueShift}
+                    min={0}
+                    max={360}
+                    onChange={(v) => set('logoHueShift', v)}
+                    suffix="deg"
+                  />
                 </div>
               )}
+
+              <div className={styles.stopsBlock}>
+                <p className={styles.subHeading}>During animation</p>
+                <ToggleRow
+                  label="Let QR animation color the logo"
+                  checked={style.logoColorOver}
+                  onChange={(v) => set('logoColorOver', v)}
+                />
+                {!style.logoColorOver && (
+                  <div className={styles.indented}>
+                    <label className={styles.curveRow}>
+                      <span className={styles.sliderLabel}>Logo motion</span>
+                      <select
+                        value={style.logoAnimationType}
+                        onChange={(e) =>
+                          set(
+                            'logoAnimationType',
+                            e.target.value as LogoAnimationType,
+                          )
+                        }
+                      >
+                        {LOGO_ANIMATION_TYPES.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {style.logoAnimationType !== 'none' && (
+                      <SliderField
+                        label="Logo motion speed"
+                        value={style.logoAnimationSpeed}
+                        min={0}
+                        max={600}
+                        onChange={(v) => set('logoAnimationSpeed', v)}
+                        hint={
+                          style.logoAnimationSpeed === 0 ? 'Paused' : undefined
+                        }
+                      />
+                    )}
+                    <p className={styles.fieldHint}>
+                      The logo keeps its own colors and animates separately from
+                      the QR. Visible while an animation (QR or logo) is active.
+                    </p>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -479,7 +669,10 @@ export function QrStyleControls({
                   type="button"
                   className={`${styles.optionTile} ${style.animationType === t.id ? styles.optionTileActive : ''}`}
                   onClick={() => {
-                    const stopPreset = getAnimationStopPreset(t.id, style.dotColor);
+                    const stopPreset = getAnimationStopPreset(
+                      t.id,
+                      style.dotColor,
+                    );
                     const dirPreset = getAnimationDirectionPreset(t.id);
                     const timingPreset = getAnimationTimingPreset(t.id);
                     onChange({
@@ -526,7 +719,12 @@ export function QrStyleControls({
                 <span className={styles.sliderLabel}>Curve</span>
                 <select
                   value={style.animationTimingFunction}
-                  onChange={(e) => set('animationTimingFunction', e.target.value as AnimationTimingFunction)}
+                  onChange={(e) =>
+                    set(
+                      'animationTimingFunction',
+                      e.target.value as AnimationTimingFunction,
+                    )
+                  }
                 >
                   <option value="linear">Linear</option>
                   <option value="ease">Ease</option>
@@ -536,8 +734,13 @@ export function QrStyleControls({
                 </select>
               </label>
               {(() => {
-                const warn = checkLoopSeamless(style.animationType, style.animationStops);
-                return warn ? <div className="alert alert-warning">{warn}</div> : null;
+                const warn = checkLoopSeamless(
+                  style.animationType,
+                  style.animationStops,
+                );
+                return warn ? (
+                  <div className="alert alert-warning">{warn}</div>
+                ) : null;
               })()}
               <div className={styles.stopsBlock}>
                 <div className={styles.stopsHeader}>
@@ -548,7 +751,12 @@ export function QrStyleControls({
                     onClick={() => {
                       const stops = [
                         ...style.animationStops,
-                        { color: '#ffffff', colorEnd: '#ffffff', position: 50, positionEnd: 50 },
+                        {
+                          color: '#ffffff',
+                          colorEnd: '#ffffff',
+                          position: 50,
+                          positionEnd: 50,
+                        },
                       ];
                       onChange({ ...style, animationStops: stops });
                     }}
@@ -567,7 +775,9 @@ export function QrStyleControls({
                               type="color"
                               className={styles.stopColorSwatch}
                               value={stop.color}
-                              onChange={(e) => updateStop(i, { color: e.target.value })}
+                              onChange={(e) =>
+                                updateStop(i, { color: e.target.value })
+                              }
                             />
                             <span className={styles.stopColorLabel}>Start</span>
                           </div>
@@ -576,7 +786,9 @@ export function QrStyleControls({
                               type="color"
                               className={styles.stopColorSwatch}
                               value={stop.colorEnd}
-                              onChange={(e) => updateStop(i, { colorEnd: e.target.value })}
+                              onChange={(e) =>
+                                updateStop(i, { colorEnd: e.target.value })
+                              }
                             />
                             <span className={styles.stopColorLabel}>End</span>
                           </div>
@@ -586,7 +798,9 @@ export function QrStyleControls({
                             type="button"
                             className={styles.stopRemove}
                             onClick={() => {
-                              const stops = style.animationStops.filter((_, j) => j !== i);
+                              const stops = style.animationStops.filter(
+                                (_, j) => j !== i,
+                              );
                               onChange({ ...style, animationStops: stops });
                             }}
                             aria-label="Remove stop"
@@ -598,14 +812,20 @@ export function QrStyleControls({
                       <div className={styles.stopPosGrid}>
                         <div className={styles.stopPosCell}>
                           <div className={styles.stopPosHead}>
-                            <span className={styles.stopPosLabel}>Pos start</span>
+                            <span className={styles.stopPosLabel}>
+                              Pos start
+                            </span>
                             <input
                               type="number"
                               className={styles.stopPosInput}
                               min={0}
                               max={100}
                               value={stop.position}
-                              onChange={(e) => updateStop(i, { position: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateStop(i, {
+                                  position: Number(e.target.value),
+                                })
+                              }
                             />
                           </div>
                           <input
@@ -614,7 +834,11 @@ export function QrStyleControls({
                             min={0}
                             max={100}
                             value={stop.position}
-                            onChange={(e) => updateStop(i, { position: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateStop(i, {
+                                position: Number(e.target.value),
+                              })
+                            }
                           />
                         </div>
                         <div className={styles.stopPosCell}>
@@ -626,7 +850,11 @@ export function QrStyleControls({
                               min={0}
                               max={100}
                               value={stop.positionEnd}
-                              onChange={(e) => updateStop(i, { positionEnd: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateStop(i, {
+                                  positionEnd: Number(e.target.value),
+                                })
+                              }
                             />
                           </div>
                           <input
@@ -635,7 +863,11 @@ export function QrStyleControls({
                             min={0}
                             max={100}
                             value={stop.positionEnd}
-                            onChange={(e) => updateStop(i, { positionEnd: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateStop(i, {
+                                positionEnd: Number(e.target.value),
+                              })
+                            }
                           />
                         </div>
                       </div>
@@ -652,15 +884,35 @@ export function QrStyleControls({
         <div className={styles.panel}>
           <label>
             Error correction
-            <select value={style.ecLevel} onChange={(e) => set('ecLevel', e.target.value as ErrorCorrectionLevel)}>
+            <select
+              value={style.ecLevel}
+              onChange={(e) =>
+                set('ecLevel', e.target.value as ErrorCorrectionLevel)
+              }
+            >
               <option value="L">L — 7% recovery</option>
               <option value="M">M — 15% recovery</option>
               <option value="Q">Q — 25% recovery</option>
               <option value="H">H — 30% recovery (best for logos)</option>
             </select>
           </label>
-          <SliderField label="Quiet zone" value={style.quietZone} min={0} max={4} onChange={(v) => set('quietZone', v)} suffix=" modules" />
-          <SliderField label="Canvas size" value={style.qrSize} min={260} max={1000} step={20} onChange={(v) => set('qrSize', v)} suffix="px" />
+          <SliderField
+            label="Quiet zone"
+            value={style.quietZone}
+            min={0}
+            max={4}
+            onChange={(v) => set('quietZone', v)}
+            suffix=" modules"
+          />
+          <SliderField
+            label="Canvas size"
+            value={style.qrSize}
+            min={260}
+            max={1000}
+            step={20}
+            onChange={(v) => set('qrSize', v)}
+            suffix="px"
+          />
         </div>
       )}
     </div>
@@ -773,7 +1025,9 @@ function StyleSaves({
   onLoad: (style: StyleData, logo?: string | null) => void;
 }) {
   const [saves, setSaves] = useState<SaveEntry[]>(() => loadSavesFromStorage());
-  const [primaryId, setPrimaryId] = useState<string | null>(() => loadPrimaryFromStorage());
+  const [primaryId, setPrimaryId] = useState<string | null>(() =>
+    loadPrimaryFromStorage(),
+  );
   const [saveName, setSaveName] = useState('');
   const [animatePreviews, setAnimatePreviews] = useState(false);
 
@@ -801,7 +1055,9 @@ function StyleSaves({
   }
 
   function overwrite(id: string) {
-    const updated = saves.map((s) => (s.id === id ? { ...s, styleData: style, customLogo } : s));
+    const updated = saves.map((s) =>
+      s.id === id ? { ...s, styleData: style, customLogo } : s,
+    );
     setSaves(updated);
     persistSaves(updated);
   }
@@ -836,7 +1092,11 @@ function StyleSaves({
   // Compute where the dragged tile should land based on which other tile
   // the cursor is currently over (or nearest to, if in a gap). Returns a
   // new order array with `id` spliced into the target index.
-  function computeDropOrder(id: string, clientX: number, clientY: number): string[] | null {
+  function computeDropOrder(
+    id: string,
+    clientX: number,
+    clientY: number,
+  ): string[] | null {
     const tiles = tileElsRef.current;
     if (tiles.size === 0) return null;
     let bestId: string | null = null;
@@ -861,7 +1121,10 @@ function StyleSaves({
     const insertAfter = clientX > targetRect.left + targetRect.width / 2;
     const baseIdx = baseOrder.indexOf(bestId);
     const filtered = baseOrder.filter((x) => x !== id);
-    const insertAt = Math.min(filtered.length, Math.max(0, baseIdx + (insertAfter ? 1 : 0)));
+    const insertAt = Math.min(
+      filtered.length,
+      Math.max(0, baseIdx + (insertAfter ? 1 : 0)),
+    );
     filtered.splice(insertAt, 0, id);
     return filtered;
   }
@@ -879,7 +1142,9 @@ function StyleSaves({
         const tileRect = target.getBoundingClientRect();
         let dataUrl: string | null = null;
         try {
-          const canvas = target.querySelector('canvas') as HTMLCanvasElement | null;
+          const canvas = target.querySelector(
+            'canvas',
+          ) as HTMLCanvasElement | null;
           if (canvas && canvas.width > 0) dataUrl = canvas.toDataURL();
         } catch {
           /* tainted canvas: ghost falls back to a plain box */
@@ -951,7 +1216,10 @@ function StyleSaves({
           }
           if (s.started) {
             const finalOrder = computeDropOrder(id, ev.clientX, ev.clientY);
-            if (finalOrder && finalOrder.join(',') !== saves.map((x) => x.id).join(',')) {
+            if (
+              finalOrder &&
+              finalOrder.join(',') !== saves.map((x) => x.id).join(',')
+            ) {
               commitReorder(finalOrder);
             }
           } else {
@@ -1005,10 +1273,16 @@ function StyleSaves({
       </div>
 
       {saves.length > 0 && (
-        <ToggleRow label="Animate previews" checked={animatePreviews} onChange={setAnimatePreviews} />
+        <ToggleRow
+          label="Animate previews"
+          checked={animatePreviews}
+          onChange={setAnimatePreviews}
+        />
       )}
 
-      {saves.length === 0 && <p className={styles.emptyState}>No saved styles yet</p>}
+      {saves.length === 0 && (
+        <p className={styles.emptyState}>No saved styles yet</p>
+      )}
 
       <div className={styles.savesGrid}>
         {saves.map((s) => (
@@ -1019,7 +1293,9 @@ function StyleSaves({
             animate={animatePreviews}
             isPrimary={primaryId === s.id}
             isDragging={dragId === s.id}
-            dragHandlers={makeDragHandlers(s.id, () => onLoad(s.styleData, s.customLogo))}
+            dragHandlers={makeDragHandlers(s.id, () =>
+              onLoad(s.styleData, s.customLogo),
+            )}
             tileRef={(el) => {
               if (el) tileElsRef.current.set(s.id, el);
               else tileElsRef.current.delete(s.id);
@@ -1056,7 +1332,9 @@ function SaveTile({
   animate: boolean;
   isPrimary: boolean;
   isDragging: boolean;
-  dragHandlers: { onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void };
+  dragHandlers: {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  };
   tileRef: (el: HTMLDivElement | null) => void;
   onLoad: () => void;
   onOverwrite: () => void;
@@ -1064,7 +1342,7 @@ function SaveTile({
   onTogglePrimary: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [maskUrl, setMaskUrl] = useState<string | null>(null);
+  const [layers, setLayers] = useState<AnimationLayers>(NO_LAYERS);
 
   useEffect(() => {
     const dataString = qrData || FALLBACK_QR_DATA;
@@ -1077,7 +1355,10 @@ function SaveTile({
       let logoSvgMarkup: string | null = null;
       if (save.customLogo) {
         try {
-          if (save.customLogo.endsWith('.svg') || save.customLogo.startsWith('data:image/svg')) {
+          if (
+            save.customLogo.endsWith('.svg') ||
+            save.customLogo.startsWith('data:image/svg')
+          ) {
             logoSvgMarkup = save.customLogo.startsWith('data:image/svg')
               ? atob(save.customLogo.split(',')[1] ?? '')
               : await (await fetch(save.customLogo)).text();
@@ -1128,7 +1409,22 @@ function SaveTile({
       if (canvas) await renderQrToCanvas({ canvas, ...renderOpts });
       if (cancelled) return;
 
-      if (savedStyle.animationType !== 'none' && savedStyle.animationStops?.length >= 3) {
+      const colorAnim =
+        savedStyle.animationType !== 'none' &&
+        savedStyle.animationStops?.length >= 3;
+      const redrawLogo = !!save.customLogo && !savedStyle.logoColorOver;
+      const logoMotion = redrawLogo && savedStyle.logoAnimationType !== 'none';
+
+      if (!colorAnim && !logoMotion) {
+        if (!cancelled) setLayers(NO_LAYERS);
+        return;
+      }
+
+      let colorMaskUrl: string | null = null;
+      let baseImageUrl: string | null = null;
+      let logoLayerUrl: string | null = null;
+
+      if (colorAnim) {
         const maskCanvas = document.createElement('canvas');
         await renderQrToCanvas({
           canvas: maskCanvas,
@@ -1141,20 +1437,42 @@ function SaveTile({
             useGradient: false,
             transparentBg: true,
           },
+          skipLogo: redrawLogo,
         });
-        if (!cancelled) setMaskUrl(maskCanvas.toDataURL());
-      } else if (!cancelled) {
-        setMaskUrl(null);
+        colorMaskUrl = maskCanvas.toDataURL();
+      } else {
+        const baseCanvas = document.createElement('canvas');
+        await renderQrToCanvas({
+          canvas: baseCanvas,
+          ...renderOpts,
+          skipLogo: true,
+        });
+        baseImageUrl = baseCanvas.toDataURL();
       }
+
+      if (redrawLogo) {
+        const layer = await renderLogoLayer({
+          canvasSize: tileSize,
+          style: { ...savedStyle, qrSize: tileSize },
+          logoImg,
+          logoSvgMarkup,
+          logoColorSync: !savedStyle.logoIndependent,
+        });
+        logoLayerUrl = layer ? layer.toDataURL() : null;
+      }
+
+      if (!cancelled) setLayers({ colorMaskUrl, baseImageUrl, logoLayerUrl });
     })();
     return () => {
       cancelled = true;
     };
   }, [save.styleData, save.customLogo, qrData]);
 
-  const savedStyle = save.styleData as StyleData;
-  const isAnimated = savedStyle.animationType !== 'none' && !!maskUrl;
-  const tileAnimStyle = animate ? savedStyle : { ...savedStyle, animationSpeed: 0 };
+  const savedStyle = { ...DEFAULT_STYLE, ...save.styleData } as StyleData;
+  const isAnimated = !!(layers.colorMaskUrl || layers.baseImageUrl);
+  const tileAnimStyle = animate
+    ? savedStyle
+    : { ...savedStyle, animationSpeed: 0, logoAnimationSpeed: 0 };
   const lightBg = savedStyle.previewBg === 'light';
 
   return (
@@ -1173,7 +1491,11 @@ function SaveTile({
         style={{ aspectRatio: '1 / 1' }}
       >
         {isAnimated && (
-          <QrAnimatedPreview maskDataUrl={maskUrl} style={tileAnimStyle as StyleData} size={250} />
+          <QrAnimatedPreview
+            layers={layers}
+            style={tileAnimStyle as StyleData}
+            size={250}
+          />
         )}
         <canvas
           ref={canvasRef}
@@ -1253,9 +1575,15 @@ function GhostTile({ ghost }: { ghost: Ghost }) {
       }}
     >
       {ghost.dataUrl ? (
-        <img src={ghost.dataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <img
+          src={ghost.dataUrl}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        />
       ) : (
-        <div style={{ width: '100%', height: '100%', background: 'var(--muted)' }} />
+        <div
+          style={{ width: '100%', height: '100%', background: 'var(--muted)' }}
+        />
       )}
     </div>
   );

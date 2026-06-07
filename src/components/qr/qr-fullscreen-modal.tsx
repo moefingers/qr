@@ -1,20 +1,26 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import type { StyleData } from './qr-types';
+import type { StyleData, AnimationLayers } from './qr-types';
 import { QrAnimatedPreview } from './qr-animated-preview';
 import styles from './qr-fullscreen-modal.module.css';
 
 interface Props {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  maskDataUrl: string | null;
+  layers: AnimationLayers;
   style: StyleData;
   lightBg: boolean;
   onClose: () => void;
 }
 
-export function QrFullscreenModal({ canvasRef, maskDataUrl, style, lightBg, onClose }: Props) {
+export function QrFullscreenModal({
+  canvasRef,
+  layers,
+  style,
+  lightBg,
+  onClose,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isAnimated = !!maskDataUrl && style.animationType !== 'none';
+  const isAnimated = !!(layers.colorMaskUrl || layers.baseImageUrl);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -37,7 +43,7 @@ export function QrFullscreenModal({ canvasRef, maskDataUrl, style, lightBg, onCl
     clone.getContext('2d')!.drawImage(canvas, 0, 0);
     containerRef.current.innerHTML = '';
     containerRef.current.appendChild(clone);
-  }, [canvasRef, maskDataUrl, style, isAnimated]);
+  }, [canvasRef, layers, style, isAnimated]);
 
   return (
     <div
@@ -56,7 +62,11 @@ export function QrFullscreenModal({ canvasRef, maskDataUrl, style, lightBg, onCl
       </button>
       <div className={styles.stage}>
         {isAnimated ? (
-          <QrAnimatedPreview maskDataUrl={maskDataUrl!} style={style} size={style.qrSize} />
+          <QrAnimatedPreview
+            layers={layers}
+            style={style}
+            size={style.qrSize}
+          />
         ) : (
           <div ref={containerRef} />
         )}

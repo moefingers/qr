@@ -1,4 +1,10 @@
-export type DotShape = 'square' | 'dot' | 'rounded' | 'diamond' | 'star' | 'heart';
+export type DotShape =
+  | 'square'
+  | 'dot'
+  | 'rounded'
+  | 'diamond'
+  | 'star'
+  | 'heart';
 export type CornerShape = 'square' | 'rounded' | 'dot';
 export type GradientType = 'linear' | 'radial';
 export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
@@ -80,6 +86,16 @@ export interface StyleData {
   logoGradientType: GradientType;
   logoGradientAngle: number;
   logoHueShift: number;
+  // When true (default), an active QR color animation paints over the
+  // logo too — the logo is baked into the animation mask as a silhouette
+  // and loses its own colors. When false, the logo is excluded from the
+  // mask and redrawn in its own colors on top, where it can carry its
+  // own (transform-based) animation independent of the color track.
+  logoColorOver: boolean;
+  // Transform animation applied to the redrawn logo layer (only when
+  // logoColorOver is false). Independent of the QR color animation.
+  logoAnimationType: LogoAnimationType;
+  logoAnimationSpeed: number;
   previewBg: 'light' | 'dark';
   animationType: AnimationType;
   animationSpeed: number;
@@ -87,6 +103,23 @@ export interface StyleData {
   animationTimingFunction: AnimationTimingFunction;
   animationStops: AnimationStop[];
   activePreset: string | null;
+}
+
+// The image layers an animated QR is composited from. Built by the
+// editor, consumed by the preview, fullscreen modal, and every export
+// path. When the QR isn't animated, all three are null.
+export interface AnimationLayers {
+  // Monochrome alpha mask the color animation flows through. Set when the
+  // QR color animation is active. Excludes the logo when it's redrawn as
+  // its own layer.
+  colorMaskUrl: string | null;
+  // Fully-rendered static QR (logo excluded) used as the per-frame base
+  // when there's no color animation but the logo animates on its own.
+  baseImageUrl: string | null;
+  // The logo, in its own colors, on a transparent full-size canvas —
+  // composited on top of every frame and given its own transform
+  // animation. Set whenever the logo is redrawn rather than colored over.
+  logoLayerUrl: string | null;
 }
 
 export interface AnimationStop {
@@ -110,11 +143,25 @@ export type AnimationType =
 // migration step.
 export type AnimationDirection = 'cw' | 'ccw' | 'alt';
 
+// Logo transform animations. Distinct from the color-based AnimationType
+// above: these move/scale/fade the redrawn logo layer rather than
+// recoloring it.
+//   pulse  — opacity oscillates (fade in/out)
+//   scale  — uniform expand / contract around center
+//   flipX  — horizontal scaleX swept from +100% through 0 to -100% (a
+//            coin-flip), and back
+export type LogoAnimationType = 'none' | 'pulse' | 'scale' | 'flipX';
+
 // CSS-compatible animation-timing-function keywords. Closed union so a
 // value can be injected straight into the animated preview's CSS without
 // further sanitization, and the export workers can apply a matching
 // easing curve when computing per-frame phase.
-export type AnimationTimingFunction = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
+export type AnimationTimingFunction =
+  | 'linear'
+  | 'ease'
+  | 'ease-in'
+  | 'ease-out'
+  | 'ease-in-out';
 
 export const DEFAULT_VCARD: VCardData = {
   firstName: '',
@@ -180,6 +227,9 @@ export const DEFAULT_STYLE: StyleData = {
   logoGradientType: 'linear',
   logoGradientAngle: 45,
   logoHueShift: 0,
+  logoColorOver: true,
+  logoAnimationType: 'none',
+  logoAnimationSpeed: 50,
   previewBg: 'dark',
   animationType: 'none',
   animationSpeed: 50,

@@ -12,8 +12,12 @@ import {
 
 import { QrFullscreenModal } from './qr-fullscreen-modal';
 import { QrAnimatedPreview } from './qr-animated-preview';
-import { sanitizeFilename, QR_BYTE_WARN_THRESHOLD, MAX_QR_BYTES } from './qr-utils';
-import type { StyleData, QrMode } from './qr-types';
+import {
+  sanitizeFilename,
+  QR_BYTE_WARN_THRESHOLD,
+  MAX_QR_BYTES,
+} from './qr-utils';
+import type { StyleData, QrMode, AnimationLayers } from './qr-types';
 import styles from './qr-preview.module.css';
 
 interface QrMeta {
@@ -23,7 +27,7 @@ interface QrMeta {
 
 interface Props {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  maskDataUrl: string | null;
+  layers: AnimationLayers;
   style: StyleData;
   byteSize: number;
   qrMeta: QrMeta;
@@ -35,7 +39,7 @@ interface Props {
 
 export function QrPreview({
   canvasRef,
-  maskDataUrl,
+  layers,
   style,
   byteSize,
   qrMeta,
@@ -51,7 +55,9 @@ export function QrPreview({
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const lightBg = style.previewBg === 'light';
 
-  const isAnimated = !!(maskDataUrl && style.animationType !== 'none');
+  // The editor populates a color mask (color animation) and/or a base
+  // image (logo-only animation) exactly when the QR is animated.
+  const isAnimated = !!(layers.colorMaskUrl || layers.baseImageUrl);
   const name = sanitizeFilename(fileName);
 
   function triggerDownload(blob: Blob, filename: string) {
@@ -64,12 +70,17 @@ export function QrPreview({
   }
 
   async function downloadMp4() {
-    if (!maskDataUrl) return;
+    if (!isAnimated) return;
     setExportProgress(0);
     setExportLabel('MP4');
     try {
       const { exportVideo } = await import('./qr-export-video');
-      const { blob, ext } = await exportVideo(maskDataUrl, style, 'mp4', setExportProgress);
+      const { blob, ext } = await exportVideo(
+        layers,
+        style,
+        'mp4',
+        setExportProgress,
+      );
       triggerDownload(blob, `${name}_qr.${ext}`);
     } catch (err) {
       console.error('MP4 export failed:', err);
@@ -80,12 +91,17 @@ export function QrPreview({
   }
 
   async function downloadWebm() {
-    if (!maskDataUrl) return;
+    if (!isAnimated) return;
     setExportProgress(0);
     setExportLabel('WebM');
     try {
       const { exportVideo } = await import('./qr-export-video');
-      const { blob, ext } = await exportVideo(maskDataUrl, style, 'webm', setExportProgress);
+      const { blob, ext } = await exportVideo(
+        layers,
+        style,
+        'webm',
+        setExportProgress,
+      );
       triggerDownload(blob, `${name}_qr.${ext}`);
     } catch (err) {
       console.error('WebM export failed:', err);
@@ -96,12 +112,12 @@ export function QrPreview({
   }
 
   async function downloadGif() {
-    if (!maskDataUrl) return;
+    if (!isAnimated) return;
     setExportProgress(0);
     setExportLabel('GIF');
     try {
       const { exportGif } = await import('./qr-export-gif');
-      const blob = await exportGif(maskDataUrl, style, 60, setExportProgress);
+      const blob = await exportGif(layers, style, 60, setExportProgress);
       triggerDownload(blob, `${name}_qr.gif`);
     } catch (err) {
       console.error('GIF export failed:', err);
@@ -112,12 +128,12 @@ export function QrPreview({
   }
 
   async function downloadAnimatedFrame(format: 'png' | 'webp') {
-    if (!maskDataUrl) return;
+    if (!isAnimated) return;
     setExportProgress(0);
     setExportLabel(format.toUpperCase());
     try {
       const { exportFrame } = await import('./qr-export-frame');
-      const blob = await exportFrame(maskDataUrl, style, format);
+      const blob = await exportFrame(layers, style, format);
       triggerDownload(blob, `${name}_qr.${format}`);
     } finally {
       setExportProgress(null);
@@ -176,7 +192,11 @@ export function QrPreview({
         onClick={openModal}
       >
         {isAnimated && (
-          <QrAnimatedPreview maskDataUrl={maskDataUrl} style={style} size={style.qrSize} />
+          <QrAnimatedPreview
+            layers={layers}
+            style={style}
+            size={style.qrSize}
+          />
         )}
         <canvas
           ref={canvasRef}
@@ -195,7 +215,11 @@ export function QrPreview({
           >
             {lightBg ? <Moon size={14} /> : <Sun size={14} />}
           </button>
-          <button type="button" className={styles.overlayBtn} title="Fullscreen">
+          <button
+            type="button"
+            className={styles.overlayBtn}
+            title="Fullscreen"
+          >
             <Maximize2 size={14} />
           </button>
         </div>
@@ -209,7 +233,9 @@ export function QrPreview({
       )}
 
       {byteSize > 0 && (
-        <p className={`${styles.byteCount} ${warn ? styles.byteCountWarn : ''}`}>
+        <p
+          className={`${styles.byteCount} ${warn ? styles.byteCountWarn : ''}`}
+        >
           {byteSize.toLocaleString()} / {MAX_QR_BYTES.toLocaleString()} bytes
         </p>
       )}
@@ -220,39 +246,79 @@ export function QrPreview({
             {exportProgress === -1 ? (
               <div className={styles.progressIndeterminate} />
             ) : (
-              <div className={styles.progressFill} style={{ width: `${exportProgress}%` }} />
+              <div
+                className={styles.progressFill}
+                style={{ width: `${exportProgress}%` }}
+              />
             )}
           </div>
-          {exportLabel && <p className={styles.progressLabel}>Exporting {exportLabel}…</p>}
+          {exportLabel && (
+            <p className={styles.progressLabel}>Exporting {exportLabel}…</p>
+          )}
         </div>
       )}
 
       {isAnimated ? (
         <div className={styles.actions}>
           <div className={styles.actionRow}>
-            <button type="button" className={`btn btn-primary ${styles.actionBtn}`} onClick={downloadMp4} disabled={busy}>
+            <button
+              type="button"
+              className={`btn btn-primary ${styles.actionBtn}`}
+              onClick={downloadMp4}
+              disabled={busy}
+            >
               <Download size={14} /> MP4
             </button>
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadGif} disabled={busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={downloadGif}
+              disabled={busy}
+            >
               <Download size={14} /> GIF
             </button>
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadWebm} disabled={busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={downloadWebm}
+              disabled={busy}
+            >
               <Download size={14} /> WebM
             </button>
           </div>
           <div className={styles.actionRow}>
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={() => downloadAnimatedFrame('png')} disabled={busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={() => downloadAnimatedFrame('png')}
+              disabled={busy}
+            >
               <ImageIcon size={14} /> PNG
             </button>
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={() => downloadAnimatedFrame('webp')} disabled={busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={() => downloadAnimatedFrame('webp')}
+              disabled={busy}
+            >
               <ImageIcon size={14} /> WebP
             </button>
             {mode === 'contact' && (
-              <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadVcf} disabled={!qrData || busy}>
+              <button
+                type="button"
+                className={`btn btn-outline ${styles.actionBtn}`}
+                onClick={downloadVcf}
+                disabled={!qrData || busy}
+              >
                 <FileDown size={14} /> .vcf
               </button>
             )}
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={copyData} disabled={!qrData || busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={copyData}
+              disabled={!qrData || busy}
+            >
               {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? 'Copied' : 'Copy'}
             </button>
@@ -260,18 +326,38 @@ export function QrPreview({
         </div>
       ) : (
         <div className={styles.actionRow}>
-          <button type="button" className={`btn btn-primary ${styles.actionBtn}`} onClick={downloadPng} disabled={busy}>
+          <button
+            type="button"
+            className={`btn btn-primary ${styles.actionBtn}`}
+            onClick={downloadPng}
+            disabled={busy}
+          >
             <Download size={14} /> PNG
           </button>
-          <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadWebp} disabled={busy}>
+          <button
+            type="button"
+            className={`btn btn-outline ${styles.actionBtn}`}
+            onClick={downloadWebp}
+            disabled={busy}
+          >
             <Download size={14} /> WebP
           </button>
           {mode === 'contact' && (
-            <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={downloadVcf} disabled={!qrData || busy}>
+            <button
+              type="button"
+              className={`btn btn-outline ${styles.actionBtn}`}
+              onClick={downloadVcf}
+              disabled={!qrData || busy}
+            >
               <FileDown size={14} /> .vcf
             </button>
           )}
-          <button type="button" className={`btn btn-outline ${styles.actionBtn}`} onClick={copyData} disabled={!qrData || busy}>
+          <button
+            type="button"
+            className={`btn btn-outline ${styles.actionBtn}`}
+            onClick={copyData}
+            disabled={!qrData || busy}
+          >
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -283,7 +369,7 @@ export function QrPreview({
       {showModal && (
         <QrFullscreenModal
           canvasRef={canvasRef}
-          maskDataUrl={maskDataUrl}
+          layers={layers}
           style={style}
           lightBg={lightBg}
           onClose={() => setShowModal(false)}

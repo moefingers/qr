@@ -1,45 +1,50 @@
-import type { StyleData } from './qr-types';
+import type { StyleData, AnimationLayers } from './qr-types';
+import { getExportSpeed } from './qr-export-render';
+import { bitmapFromDataUrl } from './qr-export-assets';
 // See qr-export-gif.ts for why `?worker&inline` — same single-bundle rationale.
 import VideoWorker from './qr-export-video-worker.ts?worker&inline';
 
 export type VideoFormat = 'mp4' | 'webm';
 
 export function isWebCodecsSupported(): boolean {
-  return typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
+  return (
+    typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined'
+  );
 }
 
 export async function exportVideo(
-  maskDataUrl: string,
+  layers: AnimationLayers,
   style: StyleData,
   format: VideoFormat,
   onProgress?: (pct: number) => void,
 ): Promise<{ blob: Blob; ext: string }> {
   if (!isWebCodecsSupported()) {
-    const { exportVideoFallback, isMediaRecorderFallbackSupported } = await import(
-      './qr-export-video-fallback'
-    );
+    const { exportVideoFallback, isMediaRecorderFallbackSupported } =
+      await import('./qr-export-video-fallback');
     if (!isMediaRecorderFallbackSupported()) {
       throw new Error('Video export is not supported in this browser');
     }
-    return exportVideoFallback(maskDataUrl, style, onProgress);
+    return exportVideoFallback(layers, style, onProgress);
   }
 
   const size = style.qrSize;
   const fps = 60;
-  const speed = Math.max(style.animationSpeed, 1);
+  const speed = Math.max(getExportSpeed(style), 1);
   const cycleDuration = (100 / speed) * 4;
   const frameCount = Math.round(cycleDuration * fps);
 
-  const maskImg = new Image();
-  await new Promise<void>((resolve) => {
-    maskImg.onload = () => resolve();
-    maskImg.src = maskDataUrl;
-  });
-  const maskCanvas = document.createElement('canvas');
-  maskCanvas.width = size;
-  maskCanvas.height = size;
-  maskCanvas.getContext('2d')!.drawImage(maskImg, 0, 0, size, size);
-  const maskBitmap = await createImageBitmap(maskCanvas);
+  const maskBitmap = layers.colorMaskUrl
+    ? await bitmapFromDataUrl(layers.colorMaskUrl, size)
+    : null;
+  const baseBitmap = layers.baseImageUrl
+    ? await bitmapFromDataUrl(layers.baseImageUrl, size)
+    : null;
+  const logoBitmap = layers.logoLayerUrl
+    ? await bitmapFromDataUrl(layers.logoLayerUrl, size)
+    : null;
+  const transfer = [maskBitmap, baseBitmap, logoBitmap].filter(
+    (b): b is ImageBitmap => b !== null,
+  );
 
   const mimeType = format === 'mp4' ? 'video/mp4' : 'video/webm';
 
@@ -47,12 +52,20 @@ export async function exportVideo(
     const worker = new VideoWorker();
 
     worker.onmessage = (
-      e: MessageEvent<{ type: string; pct?: number; result?: ArrayBuffer; msg?: string }>,
+      e: MessageEvent<{
+        type: string;
+        pct?: number;
+        result?: ArrayBuffer;
+        msg?: string;
+      }>,
     ) => {
       if (e.data.type === 'progress') {
         onProgress?.(e.data.pct!);
       } else if (e.data.type === 'done') {
-        resolve({ blob: new Blob([e.data.result!], { type: mimeType }), ext: format });
+        resolve({
+          blob: new Blob([e.data.result!], { type: mimeType }),
+          ext: format,
+        });
         worker.terminate();
       } else if (e.data.type === 'error') {
         reject(new Error(e.data.msg));
@@ -65,6 +78,9 @@ export async function exportVideo(
       worker.terminate();
     };
 
-    worker.postMessage({ maskBitmap, style, format, frameCount, fps }, [maskBitmap]);
+    worker.postMessage(
+      { maskBitmap, baseBitmap, logoBitmap, style, format, frameCount, fps },
+      transfer,
+    );
   });
 }
