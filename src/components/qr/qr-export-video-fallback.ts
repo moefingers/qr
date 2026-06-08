@@ -10,6 +10,8 @@ import {
   logoPhaseAt,
   computeLogoTransform,
   drawLogoTransformed,
+  isLogoColoredByAnimation,
+  paintLogoColorFill,
 } from './qr-export-render';
 import { imageFromDataUrl } from './qr-export-assets';
 
@@ -76,7 +78,18 @@ export async function exportVideoFallback(
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
 
+  // Colored-logo (color-over + motion): logo silhouette filled per-frame
+  // with the animated color on a scratch canvas.
+  const logoColored = !!logoImg && isLogoColoredByAnimation(style);
+  const logoScratch = logoColored ? document.createElement('canvas') : null;
+  if (logoScratch) {
+    logoScratch.width = size;
+    logoScratch.height = size;
+  }
+  const logoScratchCtx = logoScratch?.getContext('2d') ?? null;
+
   const paintFrame = (f: number) => {
+    let grad: Uint8ClampedArray | null = null;
     if (maskData) {
       const phase = computePhase(
         f,
@@ -85,12 +98,7 @@ export async function exportVideoFallback(
         style.animationDirection,
         style.animationTimingFunction,
       );
-      const grad = renderGradientFrame(
-        size,
-        style.animationStops,
-        phase,
-        style.animationType,
-      );
+      grad = renderGradientFrame(size, style.animationStops, phase, style.animationType);
       const frameData = compositeFrame(grad, maskData, bgColor, size);
       ctx.putImageData(
         new ImageData(frameData as Uint8ClampedArray<ArrayBuffer>, size, size),
@@ -103,12 +111,13 @@ export async function exportVideoFallback(
     }
     if (logoImg) {
       const lp = logoPhaseAt(f, totalFrames, logoCycles);
-      drawLogoTransformed(
-        ctx,
-        logoImg,
-        size,
-        computeLogoTransform(style.logoAnimationType, lp),
-      );
+      const t = computeLogoTransform(style.logoAnimationType, lp);
+      if (logoColored && logoScratchCtx && grad) {
+        paintLogoColorFill(logoScratchCtx, grad, logoImg, size);
+        drawLogoTransformed(ctx, logoScratch!, size, t);
+      } else {
+        drawLogoTransformed(ctx, logoImg, size, t);
+      }
     }
   };
 

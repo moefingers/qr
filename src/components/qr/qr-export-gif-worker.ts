@@ -12,6 +12,8 @@ import {
   logoPhaseAt,
   computeLogoTransform,
   drawLogoTransformed,
+  isLogoColoredByAnimation,
+  paintLogoColorFill,
 } from './qr-export-render';
 
 type Msg = {
@@ -62,10 +64,18 @@ ctx.onmessage = (e: MessageEvent<Msg>) => {
     frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true })!;
   }
 
+  // Colored-logo (color-over + motion): logo silhouette filled per-frame
+  // with the animated color, painted on a scratch canvas.
+  const logoColored = !!logoBitmap && isLogoColoredByAnimation(style);
+  const logoScratch = logoColored ? new OffscreenCanvas(size, size) : null;
+  const logoScratchCtx =
+    logoScratch?.getContext('2d', { willReadFrequently: true }) ?? null;
+
   const gif = GIFEncoder();
 
   for (let f = 0; f < totalFrames; f++) {
     let frame: Uint8ClampedArray;
+    let gradData: Uint8ClampedArray | null = null;
 
     if (maskData) {
       const phase = computePhase(
@@ -75,12 +85,7 @@ ctx.onmessage = (e: MessageEvent<Msg>) => {
         style.animationDirection,
         style.animationTimingFunction,
       );
-      const gradData = renderGradientFrame(
-        size,
-        style.animationStops,
-        phase,
-        style.animationType,
-      );
+      gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
       const composed = compositeFrame(gradData, maskData, bgColor, size);
       if (frameCtx) {
         frameCtx.putImageData(
@@ -100,7 +105,12 @@ ctx.onmessage = (e: MessageEvent<Msg>) => {
       if (logoBitmap) {
         const lp = logoPhaseAt(f, totalFrames, logoCycles);
         const t = computeLogoTransform(style.logoAnimationType, lp);
-        drawLogoTransformed(frameCtx, logoBitmap, size, t);
+        if (logoColored && logoScratchCtx && gradData) {
+          paintLogoColorFill(logoScratchCtx, gradData, logoBitmap, size);
+          drawLogoTransformed(frameCtx, logoScratch!, size, t);
+        } else {
+          drawLogoTransformed(frameCtx, logoBitmap, size, t);
+        }
       }
       frame = frameCtx.getImageData(0, 0, size, size).data;
     }

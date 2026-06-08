@@ -4,6 +4,8 @@ import {
   renderGradientFrame,
   compositeFrame,
   drawLogoTransformed,
+  isLogoColoredByAnimation,
+  paintLogoColorFill,
 } from './qr-export-render';
 import { imageFromDataUrl } from './qr-export-assets';
 
@@ -22,6 +24,8 @@ export async function exportFrame(
   outputCanvas.height = size;
   const ctx = outputCanvas.getContext('2d')!;
 
+  let gradData: Uint8ClampedArray | null = null;
+
   if (layers.colorMaskUrl) {
     const maskImg = await imageFromDataUrl(layers.colorMaskUrl);
     const maskCanvas = document.createElement('canvas');
@@ -33,12 +37,7 @@ export async function exportFrame(
       .getImageData(0, 0, size, size).data;
 
     const bgColor = style.transparentBg ? null : parseHex(style.bgColor);
-    const gradData = renderGradientFrame(
-      size,
-      style.animationStops,
-      phase,
-      style.animationType,
-    );
+    gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
     const frameData = compositeFrame(gradData, maskData, bgColor, size);
     ctx.putImageData(
       new ImageData(frameData as Uint8ClampedArray<ArrayBuffer>, size, size),
@@ -51,14 +50,21 @@ export async function exportFrame(
   }
 
   // The still shows the logo undistorted (identity transform) regardless
-  // of its motion type — a representative frame, not mid-flip.
+  // of its motion type — a representative frame, not mid-flip. When the
+  // logo is colored by the animation, fill its silhouette with the
+  // sampled-phase color.
   if (layers.logoLayerUrl) {
     const logoImg = await imageFromDataUrl(layers.logoLayerUrl);
-    drawLogoTransformed(ctx, logoImg, size, {
-      scaleX: 1,
-      scaleY: 1,
-      opacity: 1,
-    });
+    const identity = { scaleX: 1, scaleY: 1, opacity: 1 };
+    if (isLogoColoredByAnimation(style) && gradData) {
+      const scratch = document.createElement('canvas');
+      scratch.width = size;
+      scratch.height = size;
+      paintLogoColorFill(scratch.getContext('2d')!, gradData, logoImg, size);
+      drawLogoTransformed(ctx, scratch, size, identity);
+    } else {
+      drawLogoTransformed(ctx, logoImg, size, identity);
+    }
   }
 
   const mimeType = format === 'png' ? 'image/png' : 'image/webp';

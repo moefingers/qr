@@ -226,10 +226,13 @@ export function QrEditor() {
     // animation are independent tracks; either (or both) makes the QR
     // "animated" and switches the preview/exports onto the layered path.
     const colorAnim = styleData.animationType !== 'none';
-    const redrawLogo = !!customLogo && !styleData.logoColorOver;
-    const logoMotion = redrawLogo && styleData.logoAnimationType !== 'none';
+    const motion = !!customLogo && styleData.logoAnimationType !== 'none';
+    // The logo gets its own layer (excluded from the color mask) whenever
+    // it moves OR it keeps its own colors during a color animation. These
+    // are orthogonal: color-over and motion can each be on independently.
+    const separateLayer = !!customLogo && (motion || (colorAnim && !styleData.logoColorOver));
 
-    if (!colorAnim && !logoMotion) {
+    if (!colorAnim && !motion) {
       setLayers(NO_LAYERS);
       return;
     }
@@ -258,7 +261,7 @@ export function QrEditor() {
         logoSvgMarkup: svgMarkupRef.current,
         dodgeMask,
         logoColorSync: !styleData.logoIndependent,
-        skipLogo: redrawLogo,
+        skipLogo: separateLayer,
       });
       colorMaskUrl = maskCanvas.toDataURL();
     } else {
@@ -278,7 +281,7 @@ export function QrEditor() {
       baseImageUrl = baseCanvas.toDataURL();
     }
 
-    if (redrawLogo) {
+    if (separateLayer) {
       const layer = await renderLogoLayer({
         canvasSize: styleData.qrSize,
         style: styleData,

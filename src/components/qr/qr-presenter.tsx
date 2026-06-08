@@ -367,10 +367,10 @@ export function QrPresenter() {
     });
 
     const colorAnim = activeStyle.animationType !== 'none';
-    const redrawLogo = !!activeLogo && !activeStyle.logoColorOver;
-    const logoMotion = redrawLogo && activeStyle.logoAnimationType !== 'none';
+    const motion = !!activeLogo && activeStyle.logoAnimationType !== 'none';
+    const separateLayer = !!activeLogo && (motion || (colorAnim && !activeStyle.logoColorOver));
 
-    if (!colorAnim && !logoMotion) {
+    if (!colorAnim && !motion) {
       setLayers(NO_LAYERS);
       return;
     }
@@ -395,7 +395,7 @@ export function QrPresenter() {
         logoSvgMarkup: svgMarkupRef.current,
         dodgeMask,
         logoColorSync: !activeStyle.logoIndependent,
-        skipLogo: redrawLogo,
+        skipLogo: separateLayer,
       });
       colorMaskUrl = maskCanvas.toDataURL();
     } else {
@@ -413,7 +413,7 @@ export function QrPresenter() {
       baseImageUrl = baseCanvas.toDataURL();
     }
 
-    if (redrawLogo) {
+    if (separateLayer) {
       const layer = await renderLogoLayer({
         canvasSize: activeStyle.qrSize,
         style: activeStyle,

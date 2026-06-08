@@ -14,6 +14,8 @@ import {
   logoPhaseAt,
   computeLogoTransform,
   drawLogoTransformed,
+  isLogoColoredByAnimation,
+  paintLogoColorFill,
 } from './qr-export-render';
 
 type Msg = {
@@ -54,6 +56,14 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
 
   const frameCanvas = new OffscreenCanvas(size, size);
   const frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true })!;
+
+  // When the logo is colored by the QR animation (color-over + motion), it
+  // is painted per-frame as the logo silhouette filled with that frame's
+  // animated color, on a scratch canvas, then drawn transformed.
+  const logoColored = !!logoBitmap && isLogoColoredByAnimation(style);
+  const logoScratch = logoColored ? new OffscreenCanvas(size, size) : null;
+  const logoScratchCtx =
+    logoScratch?.getContext('2d', { willReadFrequently: true }) ?? null;
 
   let muxer: Mp4Muxer<Mp4Target> | WebmMuxer<WebmTarget>;
   let target: Mp4Target | WebmTarget;
@@ -108,6 +118,7 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
   });
 
   for (let f = 0; f < totalFrames; f++) {
+    let gradData: Uint8ClampedArray | null = null;
     if (maskData) {
       const phase = computePhase(
         f,
@@ -116,12 +127,7 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
         style.animationDirection,
         style.animationTimingFunction,
       );
-      const gradData = renderGradientFrame(
-        size,
-        style.animationStops,
-        phase,
-        style.animationType,
-      );
+      gradData = renderGradientFrame(size, style.animationStops, phase, style.animationType);
       const frameData = compositeFrame(gradData, maskData, bgColor, size);
       const imageData = new ImageData(
         frameData as Uint8ClampedArray<ArrayBuffer>,
@@ -135,13 +141,19 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
       frameCtx.drawImage(baseBitmap!, 0, 0, size, size);
     }
 
-    // Composite the logo layer (in its own colors) on top, with its
-    // per-frame transform. Drawn even when motion is 'none' (logoCycles
-    // 0 ⇒ identity) so a "keep colors" logo still appears.
+    // Composite the logo layer on top with its per-frame transform. Drawn
+    // even when motion is 'none' (logoCycles 0 ⇒ identity) so a "keep
+    // colors" logo still appears. When colored by the animation, the logo
+    // is the silhouette filled with this frame's animated color.
     if (logoBitmap) {
       const lp = logoPhaseAt(f, totalFrames, logoCycles);
       const t = computeLogoTransform(style.logoAnimationType, lp);
-      drawLogoTransformed(frameCtx, logoBitmap, size, t);
+      if (logoColored && logoScratchCtx && gradData) {
+        paintLogoColorFill(logoScratchCtx, gradData, logoBitmap, size);
+        drawLogoTransformed(frameCtx, logoScratch!, size, t);
+      } else {
+        drawLogoTransformed(frameCtx, logoBitmap, size, t);
+      }
     }
 
     const videoFrame = new VideoFrame(frameCanvas, {

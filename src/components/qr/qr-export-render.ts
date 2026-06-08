@@ -310,22 +310,32 @@ export function getExportSpeed(style: StyleData): number {
     : style.logoAnimationSpeed;
 }
 
-// Whether the logo should be redrawn as its own layer (excluded from the
-// color mask) at all.
-export function isLogoLayerActive(style: StyleData): boolean {
-  return !style.logoColorOver;
+// The logo's two animation axes are orthogonal:
+//  • color-over (logoColorOver) — is the logo painted by the QR's color
+//    animation, or kept in its own colors?
+//  • motion (logoAnimationType) — does the logo pulse/scale/flip?
+// When the QR color animation is on, color-over is on, and the logo has
+// motion, the logo layer is the logo SILHOUETTE filled per-frame by the
+// QR's animated color (rather than composited in its own colors).
+export function isLogoColoredByAnimation(style: StyleData): boolean {
+  return (
+    style.animationType !== 'none' &&
+    style.logoColorOver &&
+    style.logoAnimationType !== 'none'
+  );
 }
 
 // Integer number of logo cycles across the whole export loop. Integer ⇒
 // the last frame lines up with the first, keeping GIF/video loops
 // seamless. Derived from wall-clock so the logo's pace tracks its speed
-// slider regardless of the color track's frame count.
+// slider regardless of the color track's frame count. Driven purely by
+// motion — independent of color-over.
 export function getLogoCycles(
   style: StyleData,
   totalFrames: number,
   fps: number,
 ): number {
-  if (style.logoColorOver || style.logoAnimationType === 'none') return 0;
+  if (style.logoAnimationType === 'none') return 0;
   if (totalFrames <= 0 || fps <= 0) return 0;
   const loopSec = totalFrames / fps;
   const logoCycleSec = (100 / Math.max(style.logoAnimationSpeed, 1)) * 4;
@@ -359,6 +369,28 @@ export function drawLogoTransformed(
   ctx.translate(-size / 2, -size / 2);
   ctx.drawImage(logo, 0, 0, size, size);
   ctx.restore();
+}
+
+// Paints `scratchCtx` with the current animated-color frame (gradData)
+// clipped to the logo silhouette (the logo's alpha). The result is the
+// logo shape painted in the QR's animated color, transparent elsewhere —
+// ready to be drawn transformed via drawLogoTransformed. Used for the
+// color-over + motion case.
+export function paintLogoColorFill(
+  scratchCtx: AnyCtx2D,
+  gradData: Uint8ClampedArray,
+  logo: CanvasImageSource,
+  size: number,
+): void {
+  scratchCtx.putImageData(
+    new ImageData(gradData as Uint8ClampedArray<ArrayBuffer>, size, size),
+    0,
+    0,
+  );
+  scratchCtx.save();
+  scratchCtx.globalCompositeOperation = 'destination-in';
+  scratchCtx.drawImage(logo, 0, 0, size, size);
+  scratchCtx.restore();
 }
 
 export function floydSteinbergDither(

@@ -609,49 +609,44 @@ export function QrStyleControls({
 
               <div className={styles.stopsBlock}>
                 <p className={styles.subHeading}>During animation</p>
+                {/* Two orthogonal axes: whether the QR color animation paints
+                    the logo, and whether the logo has its own motion. Either
+                    can be set independently. */}
                 <ToggleRow
                   label="Let QR animation color the logo"
                   checked={style.logoColorOver}
                   onChange={(v) => set('logoColorOver', v)}
                 />
-                {!style.logoColorOver && (
-                  <div className={styles.indented}>
-                    <label className={styles.curveRow}>
-                      <span className={styles.sliderLabel}>Logo motion</span>
-                      <select
-                        value={style.logoAnimationType}
-                        onChange={(e) =>
-                          set(
-                            'logoAnimationType',
-                            e.target.value as LogoAnimationType,
-                          )
-                        }
-                      >
-                        {LOGO_ANIMATION_TYPES.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {style.logoAnimationType !== 'none' && (
-                      <SliderField
-                        label="Logo motion speed"
-                        value={style.logoAnimationSpeed}
-                        min={0}
-                        max={600}
-                        onChange={(v) => set('logoAnimationSpeed', v)}
-                        hint={
-                          style.logoAnimationSpeed === 0 ? 'Paused' : undefined
-                        }
-                      />
-                    )}
-                    <p className={styles.fieldHint}>
-                      The logo keeps its own colors and animates separately from
-                      the QR. Visible while an animation (QR or logo) is active.
-                    </p>
-                  </div>
+                <label className={styles.curveRow}>
+                  <span className={styles.sliderLabel}>Logo motion</span>
+                  <select
+                    value={style.logoAnimationType}
+                    onChange={(e) =>
+                      set('logoAnimationType', e.target.value as LogoAnimationType)
+                    }
+                  >
+                    {LOGO_ANIMATION_TYPES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {style.logoAnimationType !== 'none' && (
+                  <SliderField
+                    label="Logo motion speed"
+                    value={style.logoAnimationSpeed}
+                    min={0}
+                    max={600}
+                    onChange={(v) => set('logoAnimationSpeed', v)}
+                    hint={style.logoAnimationSpeed === 0 ? 'Paused' : undefined}
+                  />
                 )}
+                <p className={styles.fieldHint}>
+                  Color-over and motion are independent. With color-over off the
+                  logo keeps its own colors; motion (pulse / expand / flip) plays
+                  whenever an animation is active.
+                </p>
               </div>
             </>
           )}
@@ -1412,10 +1407,11 @@ function SaveTile({
       const colorAnim =
         savedStyle.animationType !== 'none' &&
         savedStyle.animationStops?.length >= 3;
-      const redrawLogo = !!save.customLogo && !savedStyle.logoColorOver;
-      const logoMotion = redrawLogo && savedStyle.logoAnimationType !== 'none';
+      const motion = !!save.customLogo && savedStyle.logoAnimationType !== 'none';
+      const separateLayer =
+        !!save.customLogo && (motion || (colorAnim && !savedStyle.logoColorOver));
 
-      if (!colorAnim && !logoMotion) {
+      if (!colorAnim && !motion) {
         if (!cancelled) setLayers(NO_LAYERS);
         return;
       }
@@ -1437,7 +1433,7 @@ function SaveTile({
             useGradient: false,
             transparentBg: true,
           },
-          skipLogo: redrawLogo,
+          skipLogo: separateLayer,
         });
         colorMaskUrl = maskCanvas.toDataURL();
       } else {
@@ -1450,7 +1446,7 @@ function SaveTile({
         baseImageUrl = baseCanvas.toDataURL();
       }
 
-      if (redrawLogo) {
+      if (separateLayer) {
         const layer = await renderLogoLayer({
           canvasSize: tileSize,
           style: { ...savedStyle, qrSize: tileSize },

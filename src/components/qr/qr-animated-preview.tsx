@@ -38,48 +38,50 @@ function validPositive(n: number): number | null {
 // (which would otherwise permit fetching from any origin or sneaking
 // quote chars).
 function validDataUrl(url: string): string | null {
-  return /^data:image\/[a-zA-Z+.-]+;base64,[A-Za-z0-9+/=]+$/.test(url)
-    ? url
-    : null;
+  return /^data:image\/[a-zA-Z+.-]+;base64,[A-Za-z0-9+/=]+$/.test(url) ? url : null;
+}
+
+interface ColorCss {
+  // Full CSS for the QR-body color layer (@property + @keyframes + .qrag rule).
+  css: string;
+  // The background declaration alone, so the colored-logo layer can reuse
+  // the exact same animated fill behind a logo-shaped mask.
+  fillBlock: string;
+  // The color animation shorthand value (duration name timing direction).
+  colorAnimName: string;
 }
 
 export function QrAnimatedPreview({ layers, style, size }: Props) {
   const id = useMemo(() => instanceCounter++, []);
 
-  // Color animation CSS: a div whose animated background shows through the
-  // QR alpha mask. Only built when the color track is active.
-  const colorCss = useMemo(() => {
-    if (!layers.colorMaskUrl || style.animationType === 'none') return '';
+  // Color animation: an element whose animated background shows through a
+  // mask. Returns the pieces so the same fill can drive both the QR body
+  // (masked by the QR) and the logo (masked by the logo silhouette).
+  const color = useMemo<ColorCss | null>(() => {
+    if (!layers.colorMaskUrl || style.animationType === 'none') return null;
 
     const stops = style.animationStops;
-    if (!Array.isArray(stops) || stops.length === 0) return '';
+    if (!Array.isArray(stops) || stops.length === 0) return null;
 
     const validatedStops = stops.map((s) => ({
       color: validHex(s.color),
       position: validPercent(s.position),
       positionEnd: validPercent(s.positionEnd),
-      // Raw source object kept available for sampling helpers below; we
-      // only construct rgb() / hex literal output from validated values.
       raw: s,
     }));
     if (
-      validatedStops.some(
-        (s) =>
-          s.color === null || s.position === null || s.positionEnd === null,
-      )
+      validatedStops.some((s) => s.color === null || s.position === null || s.positionEnd === null)
     ) {
-      return '';
+      return null;
     }
     const speed = validPositive(Math.max(style.animationSpeed, 1));
     const validSize = validPositive(size);
     const validMask = validDataUrl(layers.colorMaskUrl);
-    if (speed === null || validSize === null || validMask === null) return '';
+    if (speed === null || validSize === null || validMask === null) return null;
 
     const duration = (100 / speed) * 4;
     const v = (i: number) => `--qp${id}-${i}`;
 
-    // Map the user-controlled direction to a fixed set of CSS keywords.
-    // Any unexpected input is normalized to 'normal'.
     const dirCss =
       style.animationDirection === 'ccw'
         ? 'reverse'
@@ -87,7 +89,6 @@ export function QrAnimatedPreview({ layers, style, size }: Props) {
           ? 'alternate'
           : 'normal';
 
-    // Whitelist the timing function (CSS-keyword union).
     const timingCss =
       style.animationTimingFunction === 'ease' ||
       style.animationTimingFunction === 'ease-in' ||
@@ -96,9 +97,10 @@ export function QrAnimatedPreview({ layers, style, size }: Props) {
         ? style.animationTimingFunction
         : 'linear';
 
-    // CSS chunk shared by every type for mask + sizing. Fills the parent
-    // (the relatively-positioned wrapper) so the masked layer registers
-    // exactly over the logo overlay.
+    const colorAnimName = `${duration}s qra${id} ${timingCss} ${dirCss} infinite`;
+
+    // Mask + sizing chunk for the QR body. Fills the relatively-positioned
+    // wrapper so it registers exactly over the logo overlay.
     const maskBlock = `
   position: absolute;
   inset: 0;
@@ -111,19 +113,14 @@ export function QrAnimatedPreview({ layers, style, size }: Props) {
   width: 100%;
   height: 100%;`;
 
-    // Uniform-color animations: every pixel of the mask gets the same
-    // animated color. Sample the canvas-side phase curve at
-    // KEYFRAME_SAMPLES points so the CSS preview matches the exported
-    // video.
-    if (
-      style.animationType === 'pulse' ||
-      style.animationType === 'colorCycle'
-    ) {
+    let defs: string;
+    let fillBlock: string;
+
+    if (style.animationType === 'pulse' || style.animationType === 'colorCycle') {
       const KEYFRAME_SAMPLES = 24;
       const colorVar = `--qpc${id}`;
       const isPulse = style.animationType === 'pulse';
-      const phaseAt = (t: number) =>
-        isPulse ? Math.pow(Math.sin(t * Math.PI), 2) : t;
+      const phaseAt = (t: number) => (isPulse ? Math.pow(Math.sin(t * Math.PI), 2) : t);
       const initial = validatedStops[0]!.raw.color;
       const lines: string[] = [];
       for (let i = 0; i <= KEYFRAME_SAMPLES; i++) {
@@ -135,7 +132,7 @@ export function QrAnimatedPreview({ layers, style, size }: Props) {
         const pct = (t * 100).toFixed(2);
         lines.push(`  ${pct}% { ${colorVar}: rgb(${r}, ${g}, ${b}); }`);
       }
-      return `
+      defs = `
 @property ${colorVar} {
   syntax: '<color>';
   inherits: false;
@@ -144,23 +141,12 @@ export function QrAnimatedPreview({ layers, style, size }: Props) {
 
 @keyframes qra${id} {
 ${lines.join('\n')}
-}
-
-.qrag${id} {
-  background-color: var(${colorVar});
-  animation: ${duration}s qra${id} ${timingCss} ${dirCss} infinite;${maskBlock}
 }`;
-    }
-
-    // Spiral: conic gradient with an animated `from` angle. Stop
-    // positions are static — rotation provides the motion — so we
-    // ignore positionEnd.
-    if (style.animationType === 'spiral') {
+      fillBlock = `background-color: var(${colorVar});`;
+    } else if (style.animationType === 'spiral') {
       const angleVar = `--qpa${id}`;
-      const gradientStops = validatedStops
-        .map((s) => `${s.color} ${s.position}%`)
-        .join(', ');
-      return `
+      const gradientStops = validatedStops.map((s) => `${s.color} ${s.position}%`).join(', ');
+      defs = `
 @property ${angleVar} {
   syntax: '<angle>';
   inherits: false;
@@ -170,80 +156,68 @@ ${lines.join('\n')}
 @keyframes qra${id} {
   0% { ${angleVar}: 0deg; }
   100% { ${angleVar}: 360deg; }
-}
-
-.qrag${id} {
-  background: conic-gradient(from var(${angleVar}), ${gradientStops});
-  animation: ${duration}s qra${id} ${timingCss} ${dirCss} infinite;${maskBlock}
 }`;
-    }
-
-    // Band-based types: sweep / wave / radialLoop / breathe. Same
-    // animated-percentage scheme; what differs is the gradient function.
-    const propertyDefs = validatedStops
-      .map(
-        (s, i) => `@property ${v(i)} {
+      fillBlock = `background: conic-gradient(from var(${angleVar}), ${gradientStops});`;
+    } else {
+      // Band-based types: sweep / wave / radialLoop / breathe.
+      const propertyDefs = validatedStops
+        .map(
+          (s, i) => `@property ${v(i)} {
   syntax: '<percentage>';
   inherits: false;
   initial-value: ${s.position}%;
 }`,
-      )
-      .join('\n');
+        )
+        .join('\n');
+      const gradientStops = validatedStops.map((s, i) => `${s.color} var(${v(i)})`).join(', ');
+      const kfFrom = validatedStops.map((s, i) => `${v(i)}: ${s.position}%;`).join(' ');
+      const kfTo = validatedStops.map((s, i) => `${v(i)}: ${s.positionEnd}%;`).join(' ');
 
-    const gradientStops = validatedStops
-      .map((s, i) => `${s.color} var(${v(i)})`)
-      .join(', ');
-    const kfFrom = validatedStops
-      .map((s, i) => `${v(i)}: ${s.position}%;`)
-      .join(' ');
-    const kfTo = validatedStops
-      .map((s, i) => `${v(i)}: ${s.positionEnd}%;`)
-      .join(' ');
-
-    let gradientFunc: string;
-    switch (style.animationType) {
-      case 'sweep':
-        gradientFunc = `repeating-linear-gradient(90deg, ${gradientStops})`;
-        break;
-      case 'wave':
-        gradientFunc = `repeating-linear-gradient(45deg, ${gradientStops})`;
-        break;
-      default:
-        // radialLoop and breathe both use the radial gradient.
-        gradientFunc = `repeating-radial-gradient(${gradientStops})`;
-        break;
-    }
-
-    return `
+      let gradientFunc: string;
+      switch (style.animationType) {
+        case 'sweep':
+          gradientFunc = `repeating-linear-gradient(90deg, ${gradientStops})`;
+          break;
+        case 'wave':
+          gradientFunc = `repeating-linear-gradient(45deg, ${gradientStops})`;
+          break;
+        default:
+          gradientFunc = `repeating-radial-gradient(${gradientStops})`;
+          break;
+      }
+      defs = `
 ${propertyDefs}
 
 @keyframes qra${id} {
   0% { ${kfFrom} }
   100% { ${kfTo} }
-}
+}`;
+      fillBlock = `background: ${gradientFunc};`;
+    }
+
+    const css = `${defs}
 
 .qrag${id} {
-  background: ${gradientFunc};
-  animation: ${duration}s qra${id} ${timingCss} ${dirCss} infinite;${maskBlock}
+  ${fillBlock}
+  animation: ${colorAnimName};${maskBlock}
 }`;
+
+    return { css, fillBlock, colorAnimName };
   }, [layers.colorMaskUrl, style, size, id]);
 
-  // Logo transform animation CSS: keyframes sampled from the same
-  // computeLogoTransform() the exports use, so preview and export match.
-  const logoCss = useMemo(() => {
-    if (!layers.logoLayerUrl || style.logoAnimationType === 'none') return '';
-    const speed = validPositive(Math.max(style.logoAnimationSpeed, 1));
-    if (speed === null) return '';
-    const duration = (100 / speed) * 4;
+  // Logo transform keyframes (shared by the own-colors <img> overlay and
+  // the colored-logo div). Sampled from the same computeLogoTransform() the
+  // exports use, so preview and export match.
+  const motion = style.logoAnimationType !== 'none';
+  const logoDuration = (100 / Math.max(style.logoAnimationSpeed, 1)) * 4;
 
+  const logoKfCss = useMemo(() => {
+    if (!layers.logoLayerUrl || !motion) return '';
     const SAMPLES = 24;
     const lines: string[] = [];
     for (let i = 0; i <= SAMPLES; i++) {
       const t = i / SAMPLES;
-      const { scaleX, scaleY, opacity } = computeLogoTransform(
-        style.logoAnimationType,
-        t,
-      );
+      const { scaleX, scaleY, opacity } = computeLogoTransform(style.logoAnimationType, t);
       const pct = (t * 100).toFixed(2);
       lines.push(
         `  ${pct}% { transform: scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)}); opacity: ${opacity.toFixed(4)}; }`,
@@ -255,23 +229,39 @@ ${lines.join('\n')}
 }
 
 .qralogo${id} {
-  animation: ${duration}s qralogo${id} linear infinite;
+  animation: ${logoDuration}s qralogo${id} linear infinite;
   transform-origin: center;
 }`;
-  }, [
-    layers.logoLayerUrl,
-    style.logoAnimationType,
-    style.logoAnimationSpeed,
-    id,
-  ]);
+  }, [layers.logoLayerUrl, style.logoAnimationType, logoDuration, motion, id]);
 
-  const colorActive = !!colorCss;
-  const baseUrl = layers.baseImageUrl
-    ? validDataUrl(layers.baseImageUrl)
-    : null;
-  const logoUrl = layers.logoLayerUrl
-    ? validDataUrl(layers.logoLayerUrl)
-    : null;
+  const colorActive = !!color;
+  const baseUrl = layers.baseImageUrl ? validDataUrl(layers.baseImageUrl) : null;
+  const logoUrl = layers.logoLayerUrl ? validDataUrl(layers.logoLayerUrl) : null;
+
+  // Color-over + motion: the logo is its own layer, filled by the same
+  // animated color as the QR body (behind a logo-shaped mask) and given
+  // the logo transform. Otherwise the logo layer carries its own colors.
+  const logoColored = !!color && style.logoColorOver && motion && !!logoUrl;
+
+  const logoFillCss =
+    logoColored && color && logoUrl
+      ? `
+.qraglogofill${id} {
+  ${color.fillBlock}
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: url("${logoUrl}");
+  mask-image: url("${logoUrl}");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  transform-origin: center;
+  animation: ${color.colorAnimName}, ${logoDuration}s qralogo${id} linear infinite;
+}`
+      : '';
 
   // Nothing to animate (or the inputs failed validation) — render nothing
   // and let the static canvas show through.
@@ -295,34 +285,33 @@ ${lines.join('\n')}
         aspectRatio: '1',
       }}
     >
-      {colorCss && <style dangerouslySetInnerHTML={{ __html: colorCss }} />}
-      {logoCss && <style dangerouslySetInnerHTML={{ __html: logoCss }} />}
+      {color && <style dangerouslySetInnerHTML={{ __html: color.css }} />}
+      {logoKfCss && <style dangerouslySetInnerHTML={{ __html: logoKfCss }} />}
+      {logoFillCss && <style dangerouslySetInnerHTML={{ __html: logoFillCss }} />}
 
       {colorActive ? (
         <div
           className={`qrag${id}`}
-          style={
-            style.animationSpeed === 0
-              ? { animationPlayState: 'paused' }
-              : undefined
-          }
+          style={style.animationSpeed === 0 ? { animationPlayState: 'paused' } : undefined}
         />
       ) : baseUrl ? (
         <img src={baseUrl} alt="" style={fill} />
       ) : null}
 
-      {logoUrl && (
+      {logoColored ? (
+        <div className={`qraglogofill${id}`} />
+      ) : logoUrl ? (
         <img
           src={logoUrl}
           alt=""
-          className={logoCss ? `qralogo${id}` : undefined}
+          className={motion ? `qralogo${id}` : undefined}
           style={
-            logoCss && style.logoAnimationSpeed === 0
+            motion && style.logoAnimationSpeed === 0
               ? { ...fill, animationPlayState: 'paused' }
               : fill
           }
         />
-      )}
+      ) : null}
     </div>
   );
 }
