@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-06-08
+
+### Added
+- **Independent logo animation track.** The logo now animates on its own axis, orthogonal to the QR color animation. Two independent controls in the Logo tab: a "Let QR animation color the logo" toggle (on by default — existing animated QRs are unchanged), and a logo-motion select — **pulse**, **expand / contract**, or **flip-X** — with its own speed. All four combinations work: color-over on + motion paints the logo with the QR's live animated color *and* moves it (via a per-frame silhouette fill); color-over off keeps the logo's own colors while it moves. A logo can also animate over an otherwise-static QR. Applies everywhere the QR renders — live preview, fullscreen, the `#present` view, save tiles, and every export (MP4 / WebM / GIF / PNG / WebP) — with seamless looping derived from an integer cycle count.
+
+### Fixed
+- Multi-color raster (PNG/JPG) and stroke SVG logos no longer have their colors flattened by an active animation unless you opt in. Turning "Let QR animation color the logo" off redraws the logo on its own layer in its true colors.
+
 ## [2.0.1] — 2026-05-24
 
 ### Added
@@ -28,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - SVG logo upload with `fill="none"` root. Uploaded SVGs that declared `fill="none"` on the root `<svg>` (common for stroke-only icons like lucide) silently failed to render — the logo was invisible while the dodge mask still cleared QR modules behind it. The colorizer was producing duplicate `fill` attributes that the Blob-loaded SVG parser rejected. Now strips any existing root-level fill before injecting the new one.
 
-[Unreleased]: https://github.com/moefingers/qr/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/moefingers/qr/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/moefingers/qr/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/moefingers/qr/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/moefingers/qr/releases/tag/v2.0.0
