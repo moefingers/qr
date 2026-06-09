@@ -1,8 +1,5 @@
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from 'mp4-muxer';
-import {
-  Muxer as WebmMuxer,
-  ArrayBufferTarget as WebmTarget,
-} from 'webm-muxer';
+import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from 'webm-muxer';
 import type { StyleData } from './qr-types';
 import {
   parseHex,
@@ -34,10 +31,7 @@ ctx.onmessage = async (e: MessageEvent<Msg>) => {
   const { maskBitmap, baseBitmap, logoBitmap, style, format, frameCount, fps } =
     e.data;
   const size = (maskBitmap ?? baseBitmap)!.width;
-  const loopKind = getEffectiveLoopKind(
-    style.animationType,
-    style.animationDirection,
-  );
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
   const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const frameDurationUs = Math.round(1_000_000 / fps);
   const logoCycles = getLogoCycles(style, totalFrames, fps);

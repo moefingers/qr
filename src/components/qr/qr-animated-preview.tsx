@@ -299,7 +299,17 @@ ${lines.join('\n')}
       ) : null}
 
       {logoColored ? (
-        <div className={`qraglogofill${id}`} />
+        <div
+          className={`qraglogofill${id}`}
+          // The div runs both the color and transform animations;
+          // animationPlayState pauses all of them, so a 0 on either speed
+          // (the "static" intent) freezes the layer.
+          style={
+            style.animationSpeed === 0 || style.logoAnimationSpeed === 0
+              ? { animationPlayState: 'paused' }
+              : undefined
+          }
+        />
       ) : logoUrl ? (
         <img
           src={logoUrl}

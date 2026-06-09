@@ -23,20 +23,13 @@ export async function exportGif(
   const logoBitmap = layers.logoLayerUrl
     ? await bitmapFromDataUrl(layers.logoLayerUrl, exportSize)
     : null;
-  const transfer = [maskBitmap, baseBitmap, logoBitmap].filter(
-    (b): b is ImageBitmap => b !== null,
-  );
+  const transfer = [maskBitmap, baseBitmap, logoBitmap].filter((b): b is ImageBitmap => b !== null);
 
   return new Promise((resolve, reject) => {
     const worker = new GifWorker();
 
     worker.onmessage = (
-      e: MessageEvent<{
-        type: string;
-        pct?: number;
-        result?: ArrayBuffer;
-        msg?: string;
-      }>,
+      e: MessageEvent<{ type: string; pct?: number; result?: ArrayBuffer; msg?: string }>,
     ) => {
       if (e.data.type === 'progress') {
         onProgress?.(e.data.pct!);
@@ -51,9 +44,6 @@ export async function exportGif(
       worker.terminate();
     };
 
-    worker.postMessage(
-      { maskBitmap, baseBitmap, logoBitmap, style, frameCount },
-      transfer,
-    );
+    worker.postMessage({ maskBitmap, baseBitmap, logoBitmap, style, frameCount }, transfer);
   });
 }

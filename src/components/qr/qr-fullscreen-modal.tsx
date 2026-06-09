@@ -12,13 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function QrFullscreenModal({
-  canvasRef,
-  layers,
-  style,
-  lightBg,
-  onClose,
-}: Props) {
+export function QrFullscreenModal({ canvasRef, layers, style, lightBg, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isAnimated = !!(layers.colorMaskUrl || layers.baseImageUrl);
 
@@ -62,11 +56,7 @@ export function QrFullscreenModal({
       </button>
       <div className={styles.stage}>
         {isAnimated ? (
-          <QrAnimatedPreview
-            layers={layers}
-            style={style}
-            size={style.qrSize}
-          />
+          <QrAnimatedPreview layers={layers} style={style} size={style.qrSize} />
         ) : (
           <div ref={containerRef} />
         )}

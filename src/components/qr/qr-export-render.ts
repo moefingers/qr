@@ -12,9 +12,7 @@ export type AnimationLoopKind = 'forward' | 'alternate';
 // Types that travel back-and-forth want their cycle stretched across 2×
 // the frame count so the wall-clock pace matches forward types.
 export function getAnimationLoopKind(type: AnimationType): AnimationLoopKind {
-  return type === 'breathe' || type === 'pulse' || type === 'wave'
-    ? 'alternate'
-    : 'forward';
+  return type === 'breathe' || type === 'pulse' || type === 'wave' ? 'alternate' : 'forward';
 }
 
 // Effective loop kind incl. user-controlled direction. A forward-loop
@@ -111,10 +109,7 @@ export function computePhase(
   }
 }
 
-export function colorAtPhase(
-  stops: AnimationStop[],
-  phase: number,
-): [number, number, number] {
+export function colorAtPhase(stops: AnimationStop[], phase: number): [number, number, number] {
   if (stops.length === 0) return [0, 0, 0];
   if (stops.length === 1) return parseHex(stops[0]!.color);
   const segs = stops.length - 1;
@@ -150,13 +145,9 @@ export function renderGradientFrame(
     cy = size / 2;
   const maxR = size * 0.7;
 
-  const positions = stops.map(
-    (s) => (s.position + (s.positionEnd - s.position) * phase) / 100,
-  );
+  const positions = stops.map((s) => (s.position + (s.positionEnd - s.position) * phase) / 100);
   const colors = stops.map((s) =>
-    parseHex(
-      s.color === s.colorEnd ? s.color : lerpHex(s.color, s.colorEnd, phase),
-    ),
+    parseHex(s.color === s.colorEnd ? s.color : lerpHex(s.color, s.colorEnd, phase)),
   );
 
   const sorted = positions
@@ -237,12 +228,8 @@ export function compositeFrame(
       const a = maskAlpha / 255;
       if (bgColor) {
         frame[pi] = Math.round(gradData[pi]! * a + bgColor[0] * (1 - a));
-        frame[pi + 1] = Math.round(
-          gradData[pi + 1]! * a + bgColor[1] * (1 - a),
-        );
-        frame[pi + 2] = Math.round(
-          gradData[pi + 2]! * a + bgColor[2] * (1 - a),
-        );
+        frame[pi + 1] = Math.round(gradData[pi + 1]! * a + bgColor[1] * (1 - a));
+        frame[pi + 2] = Math.round(gradData[pi + 2]! * a + bgColor[2] * (1 - a));
         frame[pi + 3] = 255;
       } else {
         frame[pi] = gradData[pi]!;
@@ -262,9 +249,9 @@ export function compositeFrame(
 
 // ─── Logo transform animation ────────────────────────────────────────
 // The logo animates on a separate track from the color animation: it is
-// redrawn (in its own colors) on top of every frame and moved/scaled/faded
-// per-frame. These helpers are shared by the live CSS preview's
-// keyframe-sampling and by every canvas-based export path.
+// redrawn on top of every frame and moved/scaled/faded per-frame. These
+// helpers are shared by the live CSS preview's keyframe-sampling and by
+// every canvas-based export path.
 
 export interface LogoTransform {
   scaleX: number;
@@ -274,19 +261,12 @@ export interface LogoTransform {
 
 // phase ∈ [0,1) over one cycle. All curves return to their start at
 // phase 1 so the exported loop is seamless.
-export function computeLogoTransform(
-  type: LogoAnimationType,
-  phase: number,
-): LogoTransform {
+export function computeLogoTransform(type: LogoAnimationType, phase: number): LogoTransform {
   const tau = Math.PI * 2;
   switch (type) {
     case 'pulse':
       // Opacity dips and recovers (cosine ⇒ smooth, seamless).
-      return {
-        scaleX: 1,
-        scaleY: 1,
-        opacity: 0.35 + 0.65 * (0.5 - 0.5 * Math.cos(tau * phase)),
-      };
+      return { scaleX: 1, scaleY: 1, opacity: 0.35 + 0.65 * (0.5 - 0.5 * Math.cos(tau * phase)) };
     case 'scale': {
       // Expand / contract around 1.0.
       const s = 1 + 0.15 * Math.sin(tau * phase);
@@ -305,9 +285,7 @@ export function computeLogoTransform(
 // it's active, otherwise the logo's own speed (so a logo-only animation
 // still produces a sensibly-paced export).
 export function getExportSpeed(style: StyleData): number {
-  return style.animationType !== 'none'
-    ? style.animationSpeed
-    : style.logoAnimationSpeed;
+  return style.animationType !== 'none' ? style.animationSpeed : style.logoAnimationSpeed;
 }
 
 // The logo's two animation axes are orthogonal:
@@ -330,11 +308,7 @@ export function isLogoColoredByAnimation(style: StyleData): boolean {
 // seamless. Derived from wall-clock so the logo's pace tracks its speed
 // slider regardless of the color track's frame count. Driven purely by
 // motion — independent of color-over.
-export function getLogoCycles(
-  style: StyleData,
-  totalFrames: number,
-  fps: number,
-): number {
+export function getLogoCycles(style: StyleData, totalFrames: number, fps: number): number {
   if (style.logoAnimationType === 'none') return 0;
   if (totalFrames <= 0 || fps <= 0) return 0;
   const loopSec = totalFrames / fps;
@@ -342,11 +316,7 @@ export function getLogoCycles(
   return Math.max(1, Math.round(loopSec / logoCycleSec));
 }
 
-export function logoPhaseAt(
-  f: number,
-  totalFrames: number,
-  logoCycles: number,
-): number {
+export function logoPhaseAt(f: number, totalFrames: number, logoCycles: number): number {
   if (logoCycles <= 0 || totalFrames <= 0) return 0;
   return ((f / totalFrames) * logoCycles) % 1;
 }
@@ -382,11 +352,7 @@ export function paintLogoColorFill(
   logo: CanvasImageSource,
   size: number,
 ): void {
-  scratchCtx.putImageData(
-    new ImageData(gradData as Uint8ClampedArray<ArrayBuffer>, size, size),
-    0,
-    0,
-  );
+  scratchCtx.putImageData(new ImageData(gradData as Uint8ClampedArray<ArrayBuffer>, size, size), 0, 0);
   scratchCtx.save();
   scratchCtx.globalCompositeOperation = 'destination-in';
   scratchCtx.drawImage(logo, 0, 0, size, size);

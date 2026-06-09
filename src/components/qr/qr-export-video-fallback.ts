@@ -47,10 +47,7 @@ export async function exportVideoFallback(
   const speed = Math.max(getExportSpeed(style), 1);
   const cycleDuration = (100 / speed) * 4;
   const frameCount = Math.round(cycleDuration * fps);
-  const loopKind = getEffectiveLoopKind(
-    style.animationType,
-    style.animationDirection,
-  );
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
   const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const frameDuration = 1000 / fps;
   const logoCycles = getLogoCycles(style, totalFrames, fps);

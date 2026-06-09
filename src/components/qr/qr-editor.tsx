@@ -14,6 +14,7 @@ import {
   DEFAULT_EMAIL,
   DEFAULT_SMS,
   DEFAULT_STYLE,
+  EMPTY_ANIMATION_LAYERS,
 } from './qr-types';
 import { QrDataInput } from './qr-data-input';
 import { QrStyleControls } from './qr-style-controls';
@@ -28,11 +29,7 @@ import {
   getQrMeta,
   getFileName,
 } from './qr-data-builder';
-import {
-  renderQrToCanvas,
-  generateQrMatrix,
-  renderLogoLayer,
-} from './qr-canvas-renderer';
+import { renderQrToCanvas, generateQrMatrix, buildAnimationLayers } from './qr-canvas-renderer';
 import { computeDodgeMask } from './qr-dot-dodge';
 import { RENDER_DEBOUNCE_MS, SAVE_DEBOUNCE_MS } from './qr-utils';
 import { QrCode, Maximize2 } from 'lucide-react';
@@ -41,25 +38,13 @@ import styles from './qr-editor.module.css';
 
 function GithubMark({ size = 14 }: { size?: number }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="currentColor"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
       <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
     </svg>
   );
 }
 
 const STORAGE_KEY = 'qr-editor-state';
-
-const NO_LAYERS: AnimationLayers = {
-  colorMaskUrl: null,
-  baseImageUrl: null,
-  logoLayerUrl: null,
-};
 
 interface PersistedState {
   mode: QrMode;
@@ -112,36 +97,23 @@ export function QrEditor() {
   const saved = loadState();
 
   const [mode, setMode] = useState<QrMode>(saved.mode ?? 'url');
-  const [vcardData, setVcardData] = useState<VCardData>(
-    saved.vcardData ?? DEFAULT_VCARD,
-  );
+  const [vcardData, setVcardData] = useState<VCardData>(saved.vcardData ?? DEFAULT_VCARD);
   const [urlData, setUrlData] = useState<string>(saved.urlData ?? '');
   const [textData, setTextData] = useState<string>(saved.textData ?? '');
-  const [wifiData, setWifiData] = useState<WifiData>(
-    saved.wifiData ?? DEFAULT_WIFI,
-  );
-  const [emailData, setEmailData] = useState<EmailData>(
-    saved.emailData ?? DEFAULT_EMAIL,
-  );
+  const [wifiData, setWifiData] = useState<WifiData>(saved.wifiData ?? DEFAULT_WIFI);
+  const [emailData, setEmailData] = useState<EmailData>(saved.emailData ?? DEFAULT_EMAIL);
   const [smsData, setSmsData] = useState<SmsData>(saved.smsData ?? DEFAULT_SMS);
-  const [styleData, setStyleData] = useState<StyleData>({
-    ...DEFAULT_STYLE,
-    ...saved.styleData,
-  });
-  const [customLogo, setCustomLogo] = useState<string | null>(
-    saved.customLogo ?? null,
-  );
+  const [styleData, setStyleData] = useState<StyleData>({ ...DEFAULT_STYLE, ...saved.styleData });
+  const [customLogo, setCustomLogo] = useState<string | null>(saved.customLogo ?? null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [layers, setLayers] = useState<AnimationLayers>(NO_LAYERS);
+  const [layers, setLayers] = useState<AnimationLayers>(EMPTY_ANIMATION_LAYERS);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoImgRef = useRef<HTMLImageElement | null>(null);
   const svgMarkupRef = useRef<string | null>(null);
 
   const isSvgLogo =
-    customLogo?.endsWith('.svg') ||
-    customLogo?.startsWith('data:image/svg') ||
-    false;
+    customLogo?.endsWith('.svg') || customLogo?.startsWith('data:image/svg') || false;
 
   const loadLogo = useCallback(async (src: string | null) => {
     logoImgRef.current = null;
@@ -170,15 +142,7 @@ export function QrEditor() {
     }
   }, []);
 
-  const qrData = buildQrData(
-    mode,
-    vcardData,
-    urlData,
-    textData,
-    wifiData,
-    emailData,
-    smsData,
-  );
+  const qrData = buildQrData(mode, vcardData, urlData, textData, wifiData, emailData, smsData);
   const hasData = !!qrData;
 
   const doRender = useCallback(async () => {
@@ -190,7 +154,7 @@ export function QrEditor() {
       canvas.width = styleData.qrSize;
       canvas.height = styleData.qrSize;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setLayers(NO_LAYERS);
+      setLayers(EMPTY_ANIMATION_LAYERS);
       return;
     }
 
@@ -222,77 +186,15 @@ export function QrEditor() {
       logoColorSync: !styleData.logoIndependent,
     });
 
-    // Animation layers. The QR's color animation and the logo's transform
-    // animation are independent tracks; either (or both) makes the QR
-    // "animated" and switches the preview/exports onto the layered path.
-    const colorAnim = styleData.animationType !== 'none';
-    const motion = !!customLogo && styleData.logoAnimationType !== 'none';
-    // The logo gets its own layer (excluded from the color mask) whenever
-    // it moves OR it keeps its own colors during a color animation. These
-    // are orthogonal: color-over and motion can each be on independently.
-    const separateLayer = !!customLogo && (motion || (colorAnim && !styleData.logoColorOver));
-
-    if (!colorAnim && !motion) {
-      setLayers(NO_LAYERS);
-      return;
-    }
-
-    let colorMaskUrl: string | null = null;
-    let baseImageUrl: string | null = null;
-    let logoLayerUrl: string | null = null;
-
-    if (colorAnim) {
-      // Color mask: foreground in solid black on a transparent field. The
-      // logo is excluded when it's redrawn as its own layer, so the color
-      // animation doesn't paint over it.
-      const maskCanvas = document.createElement('canvas');
-      const maskStyle: StyleData = {
-        ...styleData,
-        dotColor: '#000000',
-        cornerColor: '#000000',
-        useGradient: false,
-        transparentBg: true,
-      };
-      await renderQrToCanvas({
-        canvas: maskCanvas,
-        data: qrData,
-        style: maskStyle,
-        logoImg: logoImgRef.current,
-        logoSvgMarkup: svgMarkupRef.current,
-        dodgeMask,
-        logoColorSync: !styleData.logoIndependent,
-        skipLogo: separateLayer,
-      });
-      colorMaskUrl = maskCanvas.toDataURL();
-    } else {
-      // Logo-only animation: the QR itself is static, so each frame uses
-      // the fully-rendered QR (logo excluded) as its base.
-      const baseCanvas = document.createElement('canvas');
-      await renderQrToCanvas({
-        canvas: baseCanvas,
+    setLayers(
+      await buildAnimationLayers({
         data: qrData,
         style: styleData,
         logoImg: logoImgRef.current,
         logoSvgMarkup: svgMarkupRef.current,
         dodgeMask,
-        logoColorSync: !styleData.logoIndependent,
-        skipLogo: true,
-      });
-      baseImageUrl = baseCanvas.toDataURL();
-    }
-
-    if (separateLayer) {
-      const layer = await renderLogoLayer({
-        canvasSize: styleData.qrSize,
-        style: styleData,
-        logoImg: logoImgRef.current,
-        logoSvgMarkup: svgMarkupRef.current,
-        logoColorSync: !styleData.logoIndependent,
-      });
-      logoLayerUrl = layer ? layer.toDataURL() : null;
-    }
-
-    setLayers({ colorMaskUrl, baseImageUrl, logoLayerUrl });
+      }),
+    );
   }, [qrData, hasData, styleData, customLogo]);
 
   useEffect(() => {
@@ -328,28 +230,10 @@ export function QrEditor() {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [
-    mode,
-    vcardData,
-    urlData,
-    textData,
-    wifiData,
-    emailData,
-    smsData,
-    styleData,
-    customLogo,
-  ]);
+  }, [mode, vcardData, urlData, textData, wifiData, emailData, smsData, styleData, customLogo]);
 
   const byteSize = qrData ? new Blob([qrData]).size : 0;
-  const qrMeta = getQrMeta(
-    mode,
-    vcardData,
-    urlData,
-    textData,
-    wifiData,
-    emailData,
-    smsData,
-  );
+  const qrMeta = getQrMeta(mode, vcardData, urlData, textData, wifiData, emailData, smsData);
   const fileName = getFileName(mode, vcardData, wifiData);
 
   return (
@@ -362,9 +246,7 @@ export function QrEditor() {
                 <QrCode size={24} />
               </div>
               <div className={styles.headingGroup}>
-                <span className="badge badge-accent">
-                  Offline · Universal · Any data
-                </span>
+                <span className="badge badge-accent">Offline · Universal · Any data</span>
                 <div className={styles.titleLine}>
                   <h1 className={styles.title}>Styled QR Generator</h1>
                   <a
@@ -381,8 +263,7 @@ export function QrEditor() {
               </div>
             </div>
             <p className={styles.subtitle}>
-              Generate customizable QR codes for contacts, URLs, WiFi, email,
-              SMS, or plain text.
+              Generate customizable QR codes for contacts, URLs, WiFi, email, SMS, or plain text.
             </p>
           </div>
           <div className={styles.headerActions}>

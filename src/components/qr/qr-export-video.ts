@@ -7,9 +7,7 @@ import VideoWorker from './qr-export-video-worker.ts?worker&inline';
 export type VideoFormat = 'mp4' | 'webm';
 
 export function isWebCodecsSupported(): boolean {
-  return (
-    typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined'
-  );
+  return typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
 }
 
 export async function exportVideo(
@@ -19,8 +17,9 @@ export async function exportVideo(
   onProgress?: (pct: number) => void,
 ): Promise<{ blob: Blob; ext: string }> {
   if (!isWebCodecsSupported()) {
-    const { exportVideoFallback, isMediaRecorderFallbackSupported } =
-      await import('./qr-export-video-fallback');
+    const { exportVideoFallback, isMediaRecorderFallbackSupported } = await import(
+      './qr-export-video-fallback'
+    );
     if (!isMediaRecorderFallbackSupported()) {
       throw new Error('Video export is not supported in this browser');
     }
@@ -33,18 +32,10 @@ export async function exportVideo(
   const cycleDuration = (100 / speed) * 4;
   const frameCount = Math.round(cycleDuration * fps);
 
-  const maskBitmap = layers.colorMaskUrl
-    ? await bitmapFromDataUrl(layers.colorMaskUrl, size)
-    : null;
-  const baseBitmap = layers.baseImageUrl
-    ? await bitmapFromDataUrl(layers.baseImageUrl, size)
-    : null;
-  const logoBitmap = layers.logoLayerUrl
-    ? await bitmapFromDataUrl(layers.logoLayerUrl, size)
-    : null;
-  const transfer = [maskBitmap, baseBitmap, logoBitmap].filter(
-    (b): b is ImageBitmap => b !== null,
-  );
+  const maskBitmap = layers.colorMaskUrl ? await bitmapFromDataUrl(layers.colorMaskUrl, size) : null;
+  const baseBitmap = layers.baseImageUrl ? await bitmapFromDataUrl(layers.baseImageUrl, size) : null;
+  const logoBitmap = layers.logoLayerUrl ? await bitmapFromDataUrl(layers.logoLayerUrl, size) : null;
+  const transfer = [maskBitmap, baseBitmap, logoBitmap].filter((b): b is ImageBitmap => b !== null);
 
   const mimeType = format === 'mp4' ? 'video/mp4' : 'video/webm';
 
@@ -52,20 +43,12 @@ export async function exportVideo(
     const worker = new VideoWorker();
 
     worker.onmessage = (
-      e: MessageEvent<{
-        type: string;
-        pct?: number;
-        result?: ArrayBuffer;
-        msg?: string;
-      }>,
+      e: MessageEvent<{ type: string; pct?: number; result?: ArrayBuffer; msg?: string }>,
     ) => {
       if (e.data.type === 'progress') {
         onProgress?.(e.data.pct!);
       } else if (e.data.type === 'done') {
-        resolve({
-          blob: new Blob([e.data.result!], { type: mimeType }),
-          ext: format,
-        });
+        resolve({ blob: new Blob([e.data.result!], { type: mimeType }), ext: format });
         worker.terminate();
       } else if (e.data.type === 'error') {
         reject(new Error(e.data.msg));
@@ -78,9 +61,6 @@ export async function exportVideo(
       worker.terminate();
     };
 
-    worker.postMessage(
-      { maskBitmap, baseBitmap, logoBitmap, style, format, frameCount, fps },
-      transfer,
-    );
+    worker.postMessage({ maskBitmap, baseBitmap, logoBitmap, style, format, frameCount, fps }, transfer);
   });
 }

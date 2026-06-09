@@ -1,4 +1,5 @@
-import type { StyleData, DotShape, CornerShape } from './qr-types';
+import type { StyleData, DotShape, CornerShape, AnimationLayers } from './qr-types';
+import { EMPTY_ANIMATION_LAYERS } from './qr-types';
 import { computeLogoDimensions } from './qr-utils';
 import qrcode from 'qrcode-generator';
 
@@ -75,8 +76,7 @@ function drawModule(
       for (let i = 0; i < spikes * 2; i++) {
         const rad = (Math.PI * i) / spikes - Math.PI / 2;
         const rv = i % 2 === 0 ? outerR : innerR;
-        if (i === 0)
-          ctx.moveTo(cx + Math.cos(rad) * rv, cy + Math.sin(rad) * rv);
+        if (i === 0) ctx.moveTo(cx + Math.cos(rad) * rv, cy + Math.sin(rad) * rv);
         else ctx.lineTo(cx + Math.cos(rad) * rv, cy + Math.sin(rad) * rv);
       }
       ctx.closePath();
@@ -87,22 +87,8 @@ function drawModule(
       const s = size * 0.65;
       ctx.beginPath();
       ctx.moveTo(cx, cy + s * 0.7);
-      ctx.bezierCurveTo(
-        cx - s * 1.2,
-        cy - s * 0.2,
-        cx - s * 0.6,
-        cy - s * 1.1,
-        cx,
-        cy - s * 0.4,
-      );
-      ctx.bezierCurveTo(
-        cx + s * 0.6,
-        cy - s * 1.1,
-        cx + s * 1.2,
-        cy - s * 0.2,
-        cx,
-        cy + s * 0.7,
-      );
+      ctx.bezierCurveTo(cx - s * 1.2, cy - s * 0.2, cx - s * 0.6, cy - s * 1.1, cx, cy - s * 0.4);
+      ctx.bezierCurveTo(cx + s * 0.6, cy - s * 1.1, cx + s * 1.2, cy - s * 0.2, cx, cy + s * 0.7);
       ctx.fill();
       break;
     }
@@ -143,13 +129,7 @@ function drawFinderOuter(
       ctx.save();
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
-      ctx.roundRect(
-        x + modSize,
-        y + modSize,
-        s - modSize * 2,
-        s - modSize * 2,
-        cr * 0.5,
-      );
+      ctx.roundRect(x + modSize, y + modSize, s - modSize * 2, s - modSize * 2, cr * 0.5);
       ctx.fill();
       ctx.restore();
       break;
@@ -298,8 +278,8 @@ async function svgToImage(svgMarkup: string): Promise<HTMLImageElement> {
 // Draws just the logo glyph (no background, no dodge) into targetCtx at
 // the given box. Shared by the main render and by renderLogoLayer so the
 // redrawn logo layer looks identical to the baked-in logo. `unifiedGradient`
-// forces the SVG to solid black so the caller's source-in gradient pass
-// can paint it; for the standalone layer it's always false (own colors).
+// forces the SVG to solid black so the caller's source-in gradient pass can
+// paint it; for the standalone layer it's always false (own colors).
 async function drawLogoGlyph(
   targetCtx: CanvasRenderingContext2D,
   lx: number,
@@ -315,11 +295,7 @@ async function drawLogoGlyph(
   if (logoSvgMarkup) {
     let finalMarkup: string;
     if (unifiedGradient) {
-      finalMarkup = colorizeSvgMarkup(logoSvgMarkup, {
-        ...style,
-        useGradient: false,
-        dotColor: '#000000',
-      });
+      finalMarkup = colorizeSvgMarkup(logoSvgMarkup, { ...style, useGradient: false, dotColor: '#000000' });
     } else if (logoColorSync) {
       finalMarkup = colorizeSvgMarkup(logoSvgMarkup, style);
     } else {
@@ -350,11 +326,10 @@ async function drawLogoGlyph(
   }
 }
 
-// Renders ONLY the logo, centered, onto a fully transparent canvas the
-// same size as the QR. This is the layer that gets composited on top of
-// the (color-animated) QR and carries its own transform animation. The
-// logo keeps its own colors (sync or independent) — it is never recolored
-// by the QR's color animation here.
+// Renders ONLY the logo, centered, onto a fully transparent canvas the same
+// size as the QR. This is the layer composited on top of the (color-animated)
+// QR that carries its own transform animation. The logo keeps its own colors
+// (sync or independent) — it is never recolored by the QR's color animation.
 export async function renderLogoLayer(opts: {
   canvasSize: number;
   style: StyleData;
@@ -372,27 +347,78 @@ export async function renderLogoLayer(opts: {
 
   const maxDim = canvasSize * style.logoSize;
   const imgRef = logoImg instanceof HTMLImageElement ? logoImg : null;
-  const { w: logoW, h: logoH } = computeLogoDimensions(
-    maxDim,
-    imgRef,
-    logoSvgMarkup,
-  );
+  const { w: logoW, h: logoH } = computeLogoDimensions(maxDim, imgRef, logoSvgMarkup);
   const lx = (canvasSize - logoW) / 2;
   const ly = (canvasSize - logoH) / 2;
 
-  await drawLogoGlyph(
-    ctx,
-    lx,
-    ly,
-    logoW,
-    logoH,
-    style,
-    logoImg,
-    logoSvgMarkup,
-    logoColorSync,
-    false,
-  );
+  await drawLogoGlyph(ctx, lx, ly, logoW, logoH, style, logoImg, logoSvgMarkup, logoColorSync, false);
   return canvas;
+}
+
+// Builds the image layers an animated QR composites from, the single source
+// of truth shared by the editor, presenter, and save tiles. The QR's color
+// animation and the logo's transform animation are orthogonal: the logo gets
+// its own layer (excluded from the color mask) whenever it moves OR keeps its
+// own colors during a color animation. Returns the empty (not-animated)
+// layers when neither track is active.
+export async function buildAnimationLayers(opts: {
+  data: string;
+  style: StyleData;
+  logoImg: HTMLImageElement | SVGElement | null;
+  logoSvgMarkup: string | null;
+  dodgeMask: Float32Array | null;
+}): Promise<AnimationLayers> {
+  const { data, style, logoImg, logoSvgMarkup, dodgeMask } = opts;
+  const hasLogo = !!(logoImg || logoSvgMarkup);
+  const colorAnim = style.animationType !== 'none' && (style.animationStops?.length ?? 0) >= 3;
+  const motion = hasLogo && style.logoAnimationType !== 'none';
+  const separateLayer = hasLogo && (motion || (colorAnim && !style.logoColorOver));
+
+  if (!colorAnim && !motion) return EMPTY_ANIMATION_LAYERS;
+
+  const logoColorSync = !style.logoIndependent;
+  let colorMaskUrl: string | null = null;
+  let baseImageUrl: string | null = null;
+  let logoLayerUrl: string | null = null;
+
+  if (colorAnim) {
+    // Color mask: foreground in solid black on a transparent field. The
+    // logo is excluded when it's redrawn as its own layer.
+    const maskCanvas = document.createElement('canvas');
+    await renderQrToCanvas({
+      canvas: maskCanvas,
+      data,
+      style: { ...style, dotColor: '#000000', cornerColor: '#000000', useGradient: false, transparentBg: true },
+      logoImg,
+      logoSvgMarkup,
+      dodgeMask,
+      logoColorSync,
+      skipLogo: separateLayer,
+    });
+    colorMaskUrl = maskCanvas.toDataURL();
+  } else {
+    // Logo-only animation: the QR is static, so each frame uses the
+    // fully-rendered QR (logo excluded) as its base.
+    const baseCanvas = document.createElement('canvas');
+    await renderQrToCanvas({
+      canvas: baseCanvas,
+      data,
+      style,
+      logoImg,
+      logoSvgMarkup,
+      dodgeMask,
+      logoColorSync,
+      skipLogo: true,
+    });
+    baseImageUrl = baseCanvas.toDataURL();
+  }
+
+  if (separateLayer) {
+    const layer = await renderLogoLayer({ canvasSize: style.qrSize, style, logoImg, logoSvgMarkup, logoColorSync });
+    logoLayerUrl = layer ? layer.toDataURL() : null;
+  }
+
+  return { colorMaskUrl, baseImageUrl, logoLayerUrl };
 }
 
 export interface RenderResult {
@@ -402,22 +428,10 @@ export interface RenderResult {
   error?: string;
 }
 
-export async function renderQrToCanvas(
-  opts: RenderOptions,
-): Promise<RenderResult> {
-  const {
-    canvas,
-    data,
-    style,
-    logoSvgMarkup,
-    dodgeMask,
-    logoColorSync,
-    logoImg,
-    skipLogo,
-  } = opts;
+export async function renderQrToCanvas(opts: RenderOptions): Promise<RenderResult> {
+  const { canvas, data, style, logoSvgMarkup, dodgeMask, logoColorSync, logoImg, skipLogo } = opts;
 
-  if (!data)
-    return { success: false, modCount: 0, byteSize: 0, error: 'No data' };
+  if (!data) return { success: false, modCount: 0, byteSize: 0, error: 'No data' };
 
   const byteSize = new Blob([data]).size;
   const canvasSize = style.qrSize;
@@ -431,12 +445,7 @@ export async function renderQrToCanvas(
     qr.addData(toUTF8ByteString(data), 'Byte');
     qr.make();
   } catch {
-    return {
-      success: false,
-      modCount: 0,
-      byteSize,
-      error: 'Data too large for QR code',
-    };
+    return { success: false, modCount: 0, byteSize, error: 'Data too large for QR code' };
   }
 
   const modCount = qr.getModuleCount();
@@ -450,11 +459,12 @@ export async function renderQrToCanvas(
   // black on a transparent layer, then paint the gradient over the opaque
   // pixels using source-in compositing. This makes the gradient flow
   // seamlessly across both QR dots and logo as one cohesive image.
-  const unifiedGradient = !!(
-    style.useGradient &&
-    logoColorSync &&
-    (logoImg || logoSvgMarkup)
-  );
+  // `!!` is load-bearing: the && chain's value type is
+  // `false | HTMLImageElement | SVGElement | string | null`, only assignable
+  // to the boolean params below under non-strict TS. This repo's tsconfig is
+  // non-strict so it compiled bare, but the same code under `strict: true`
+  // (the unbrinks port) errors without the coercion. Coerce unconditionally.
+  const unifiedGradient = !!(style.useGradient && logoColorSync && (logoImg || logoSvgMarkup));
 
   if (!style.transparentBg) {
     ctx.fillStyle = style.bgColor;
@@ -472,9 +482,7 @@ export async function renderQrToCanvas(
     fgCtx = ctx;
   }
 
-  const dotFill = unifiedGradient
-    ? '#000000'
-    : createDotFill(fgCtx, canvasSize, style);
+  const dotFill = unifiedGradient ? '#000000' : createDotFill(fgCtx, canvasSize, style);
   const cornerColor = unifiedGradient
     ? '#000000'
     : style.cornerColor && /^#[0-9a-fA-F]{6}$/.test(style.cornerColor)
@@ -492,22 +500,10 @@ export async function renderQrToCanvas(
       const cy = (r + style.quietZone) * modSize + modSize / 2;
       if (strength > 0) {
         fgCtx.globalAlpha = 1 - strength;
-        drawModule(
-          fgCtx,
-          cx,
-          cy,
-          modSize * (style.shapeScale / 100),
-          style.dotShape,
-        );
+        drawModule(fgCtx, cx, cy, modSize * (style.shapeScale / 100), style.dotShape);
         fgCtx.globalAlpha = 1;
       } else {
-        drawModule(
-          fgCtx,
-          cx,
-          cy,
-          modSize * (style.shapeScale / 100),
-          style.dotShape,
-        );
+        drawModule(fgCtx, cx, cy, modSize * (style.shapeScale / 100), style.dotShape);
       }
     }
   }
@@ -521,14 +517,7 @@ export async function renderQrToCanvas(
     const fx = (fc + style.quietZone) * modSize;
     const fy = (fr + style.quietZone) * modSize;
 
-    drawFinderOuter(
-      fgCtx,
-      fx,
-      fy,
-      modSize,
-      style.cornerOuterShape,
-      cornerColor,
-    );
+    drawFinderOuter(fgCtx, fx, fy, modSize, style.cornerOuterShape, cornerColor);
 
     const gapX = fx + modSize,
       gapY = fy + modSize;
@@ -543,13 +532,7 @@ export async function renderQrToCanvas(
     }
     if (style.cornerOuterShape === 'dot') {
       fgCtx.beginPath();
-      fgCtx.arc(
-        fx + modSize * 3.5,
-        fy + modSize * 3.5,
-        modSize * 2.5,
-        0,
-        Math.PI * 2,
-      );
+      fgCtx.arc(fx + modSize * 3.5, fy + modSize * 3.5, modSize * 2.5, 0, Math.PI * 2);
       fgCtx.fill();
     } else if (style.cornerOuterShape === 'rounded') {
       fgCtx.beginPath();
@@ -562,14 +545,7 @@ export async function renderQrToCanvas(
 
     const ix = (fc + 2 + style.quietZone) * modSize;
     const iy = (fr + 2 + style.quietZone) * modSize;
-    drawFinderInner(
-      fgCtx,
-      ix,
-      iy,
-      modSize,
-      style.cornerInnerShape,
-      cornerColor,
-    );
+    drawFinderInner(fgCtx, ix, iy, modSize, style.cornerInnerShape, cornerColor);
   }
 
   // Logo overlay
@@ -577,11 +553,7 @@ export async function renderQrToCanvas(
   if (hasLogo && !skipLogo) {
     const maxDim = canvasSize * style.logoSize;
     const imgRef = logoImg instanceof HTMLImageElement ? logoImg : null;
-    const { w: logoW, h: logoH } = computeLogoDimensions(
-      maxDim,
-      imgRef,
-      logoSvgMarkup,
-    );
+    const { w: logoW, h: logoH } = computeLogoDimensions(maxDim, imgRef, logoSvgMarkup);
 
     const lx = (canvasSize - logoW) / 2;
     const ly = (canvasSize - logoH) / 2;
@@ -629,18 +601,7 @@ export async function renderQrToCanvas(
       }
     }
 
-    await drawLogoGlyph(
-      fgCtx,
-      lx,
-      ly,
-      logoW,
-      logoH,
-      style,
-      logoImg,
-      logoSvgMarkup,
-      logoColorSync,
-      unifiedGradient,
-    );
+    await drawLogoGlyph(fgCtx, lx, ly, logoW, logoH, style, logoImg, logoSvgMarkup, logoColorSync, unifiedGradient);
   }
 
   // Unified gradient pass: paint gradient over all black foreground pixels

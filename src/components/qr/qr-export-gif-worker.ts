@@ -31,10 +31,7 @@ ctx.onmessage = (e: MessageEvent<Msg>) => {
   const size = (maskBitmap ?? baseBitmap)!.width;
   // Alternate-loop types (and any forward type with `alt` direction)
   // need 2× frames to keep the wall-clock pace matched to forward types.
-  const loopKind = getEffectiveLoopKind(
-    style.animationType,
-    style.animationDirection,
-  );
+  const loopKind = getEffectiveLoopKind(style.animationType, style.animationDirection);
   const totalFrames = loopKind === 'alternate' ? frameCount * 2 : frameCount;
   const speed = Math.max(getExportSpeed(style), 1);
   const cycleDurationSec = (100 / speed) * 4;

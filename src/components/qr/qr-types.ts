@@ -92,8 +92,9 @@ export interface StyleData {
   // mask and redrawn in its own colors on top, where it can carry its
   // own (transform-based) animation independent of the color track.
   logoColorOver: boolean;
-  // Transform animation applied to the redrawn logo layer (only when
-  // logoColorOver is false). Independent of the QR color animation.
+  // Transform animation applied to the logo (pulse / scale / flip). A
+  // separate axis from logoColorOver: the logo can move whether or not the
+  // color animation paints it.
   logoAnimationType: LogoAnimationType;
   logoAnimationSpeed: number;
   previewBg: 'light' | 'dark';
@@ -121,6 +122,14 @@ export interface AnimationLayers {
   // animation. Set whenever the logo is redrawn rather than colored over.
   logoLayerUrl: string | null;
 }
+
+// The not-animated value, shared so callers don't each re-spell it. Frozen
+// because it's a singleton read-only sentinel, never mutated in place.
+export const EMPTY_ANIMATION_LAYERS: AnimationLayers = Object.freeze({
+  colorMaskUrl: null,
+  baseImageUrl: null,
+  logoLayerUrl: null,
+});
 
 export interface AnimationStop {
   color: string;
