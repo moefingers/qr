@@ -16,18 +16,28 @@
 
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: calc(var(--space-4) * var(--app-margin));
+}
+
+/* Top bar holds only the actions, right-aligned, so they keep their place
+   and the title content below never squeezes them or pushes them to a
+   second line. */
+.headerBar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .titleBlock {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-2) * var(--app-margin));
+  min-width: 0;
 }
 
-.titleRow {
+/* Icon + title as a 2-column row, vertically centered so the icon sits
+   level with the title. */
+.titleHead {
   display: flex;
   align-items: center;
   gap: calc(var(--space-3) * var(--app-margin));
@@ -46,15 +56,10 @@
   flex-shrink: 0;
 }
 
-.headingGroup {
+/* Badge + source continue below the title row, wrapping as needed. */
+.titleMeta {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.titleLine {
-  display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: calc(var(--space-3) * var(--app-margin));
 }
@@ -93,7 +98,6 @@
 .subtitle {
   font-size: calc(var(--font-size-sm) * var(--app-size));
   color: var(--muted-foreground);
-  margin-inline-start: calc(3.75rem * var(--app-margin));
   max-width: 60ch;
 }
 

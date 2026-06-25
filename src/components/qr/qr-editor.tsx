@@ -240,42 +240,48 @@ export function QrEditor() {
     <div className={styles.shell}>
       <div className={styles.container}>
         <header className={styles.header}>
+          {/* Actions live alone in the top bar so they stay pinned at the
+              top-right and never get bumped to a second line by the title
+              content, which flows full-width below them. */}
+          <div className={styles.headerBar}>
+            <div className={styles.headerActions}>
+              <a
+                href="#present"
+                className="btn btn-outline"
+                title="Open the fullscreen presenter for scanning"
+              >
+                <Maximize2 size={14} />
+                Present
+              </a>
+              <ThemeToggle />
+            </div>
+          </div>
+          {/* Icon and title share a 2-column row (icon level with the
+              title); the badge, source, and subtitle continue full-width
+              below it. */}
           <div className={styles.titleBlock}>
-            <div className={styles.titleRow}>
+            <div className={styles.titleHead}>
               <div className={styles.iconTile}>
                 <QrCode size={24} />
               </div>
-              <div className={styles.headingGroup}>
-                <span className="badge badge-accent">Offline · Universal · Any data</span>
-                <div className={styles.titleLine}>
-                  <h1 className={styles.title}>Styled QR Generator</h1>
-                  <a
-                    href="https://github.com/moefingers/qr"
-                    className={styles.sourceLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="View source on GitHub"
-                  >
-                    <GithubMark size={14} />
-                    <span>Source</span>
-                  </a>
-                </div>
-              </div>
+              <h1 className={styles.title}>Styled QR Generator</h1>
+            </div>
+            <div className={styles.titleMeta}>
+              <span className="badge badge-accent">Offline · Universal</span>
+              <a
+                href="https://github.com/moefingers/qr"
+                className={styles.sourceLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View source on GitHub"
+              >
+                <GithubMark size={14} />
+                <span>Source</span>
+              </a>
             </div>
             <p className={styles.subtitle}>
               Generate customizable QR codes for contacts, URLs, WiFi, email, SMS, or plain text.
             </p>
-          </div>
-          <div className={styles.headerActions}>
-            <a
-              href="#present"
-              className="btn btn-outline"
-              title="Open the fullscreen presenter for scanning"
-            >
-              <Maximize2 size={14} />
-              Present
-            </a>
-            <ThemeToggle />
           </div>
         </header>
 
