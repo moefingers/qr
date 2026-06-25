@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] — 2026-06-25
+
+### Fixed
+- Editor header layout on narrow screens. The header previously split into rigid `space-between` columns (title block vs. actions), squeezing the title into a sliver and leaving awkward whitespace beside the action buttons. Reworked it: the actions sit alone in a top bar, the icon shares a row with the title, and the status badge, source link, and subtitle flow full-width below — with the fixed subtitle indent removed. Trimmed the status badge to "Offline · Universal".
+
 ## [2.1.0] — 2026-06-08
 
 ### Added
@@ -36,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - SVG logo upload with `fill="none"` root. Uploaded SVGs that declared `fill="none"` on the root `<svg>` (common for stroke-only icons like lucide) silently failed to render — the logo was invisible while the dodge mask still cleared QR modules behind it. The colorizer was producing duplicate `fill` attributes that the Blob-loaded SVG parser rejected. Now strips any existing root-level fill before injecting the new one.
 
-[Unreleased]: https://github.com/moefingers/qr/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/moefingers/qr/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/moefingers/qr/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/moefingers/qr/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/moefingers/qr/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/moefingers/qr/releases/tag/v2.0.0
