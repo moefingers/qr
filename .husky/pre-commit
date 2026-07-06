@@ -1,2 +1,27 @@
+# Pre-commit: run lint-staged (auto-fix staged code) — but SKIP it when the staged
+# set is non-code only (docs/images/pdf/…, per the shared allowlist). lint-staged
+# only targets ts/tsx/js/mjs, so a non-code-only commit has nothing for it to do;
+# skipping avoids its startup cost on doc/asset commits. Any code in the staged set
+# runs lint-staged exactly as before. Shares the ONE allowlist with pre-push via
+# .husky/lib/non-code-paths.sh. FAIL SAFE: any uncertainty -> run lint-staged.
+
+# Shared "is every path non-code?" allowlist (single source of truth; pre-push
+# sources it too). Missing/unreadable -> run lint-staged (fail safe).
+. "$(dirname "$0")/lib/non-code-paths.sh" 2>/dev/null || {
+  echo "[pre-commit] cannot load non-code allowlist — running lint-staged to be safe."
+  tsc -b
+eslint .
+  exit $?
+}
+
+# The staged set lint-staged would act on (Added/Copied/Modified/Renamed; deletions
+# have no content to lint). `|| true` so an empty/failed read can't abort under -e.
+staged=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)
+
+if [ -n "$staged" ] && all_non_code "$staged"; then
+  echo "[pre-commit] non-code-only staged (docs/images/pdf) — skipping lint-staged."
+  exit 0
+fi
+
 tsc -b
 eslint .
