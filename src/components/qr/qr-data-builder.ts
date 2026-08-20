@@ -23,6 +23,9 @@ export function buildVCard(d: VCardData): string | null {
 }
 
 function escapeWifi(s: string): string {
+  // An all-hex value must be double-quoted, or scanners following the ZXing
+  // convention may read it as a raw hex key instead of a literal string.
+  if (/^[0-9a-fA-F]+$/.test(s)) return `"${s}"`;
   return s.replace(/[\\;",":]/g, (c) => '\\' + c);
 }
 

@@ -326,7 +326,7 @@ function WifiPanel({ data, onChange }: { data: WifiData; onChange: (d: WifiData)
       <Row>
         <Field label="Encryption">
           <select value={data.encryption} onChange={(e) => onChange({ ...data, encryption: e.target.value as WifiData['encryption'] })}>
-            <option value="WPA">WPA/WPA2</option>
+            <option value="WPA">WPA/WPA2/WPA3</option>
             <option value="WEP">WEP</option>
             <option value="nopass">None (open)</option>
           </select>
