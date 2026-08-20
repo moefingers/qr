@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] — 2026-08-19
+
+### Changed
+- WiFi encryption option relabeled **WPA/WPA2/WPA3** (was "WPA/WPA2"). The emitted token stays `T:WPA` — the compatible encoding for any passphrase-protected network, including WPA3: scanners hand the passphrase to the OS, which negotiates the strongest protocol the router offers. The `WIFI:` scheme has no widely-supported WPA3/SAE token, so a separate option would only hurt compatibility.
+
+### Fixed
+- WiFi SSIDs and passwords consisting entirely of hex characters (e.g. `deadbeef01`) are now double-quoted in the `WIFI:` payload, per the ZXing convention — preventing scanners from interpreting them as raw hex keys instead of literal strings.
+
 ## [2.1.1] — 2026-06-25
 
 ### Fixed
@@ -41,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - SVG logo upload with `fill="none"` root. Uploaded SVGs that declared `fill="none"` on the root `<svg>` (common for stroke-only icons like lucide) silently failed to render — the logo was invisible while the dodge mask still cleared QR modules behind it. The colorizer was producing duplicate `fill` attributes that the Blob-loaded SVG parser rejected. Now strips any existing root-level fill before injecting the new one.
 
-[Unreleased]: https://github.com/moefingers/qr/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/moefingers/qr/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/moefingers/qr/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/moefingers/qr/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/moefingers/qr/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/moefingers/qr/compare/v2.0.0...v2.0.1
